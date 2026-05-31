@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
 //import 'services/auth_service.dart';
 import 'services/notification_service.dart';
-import 'providers/settings_provider.dart';   // <-- novo import
+import 'providers/settings_providers.dart';   // <-- novo import
 import 'screens/splash_screen.dart';
 //import 'screens/home_screen.dart';
 

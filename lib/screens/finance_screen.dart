@@ -1,25 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/transaction_providers.dart';
+import '../providers/filter_providers.dart';
 import '../services/sync_service.dart';
 import 'add_transaction_screen.dart';
 
-class FinanceScreen extends ConsumerWidget {
+class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FinanceScreen> createState() => _FinanceScreenState();
+}
+
+class _FinanceScreenState extends ConsumerState<FinanceScreen> {
+  bool _showFilters = false;
+
+  final List<String> _types = ['todas', 'receita', 'despesa'];
+  final List<String> _categories = [
+    'Todas',
+    'Geral',
+    'Alimentação',
+    'Transporte',
+    'Saúde',
+    'Lazer',
+    'Salário',
+    'Negócio',
+    'Outro',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
     final balanceAsync = ref.watch(balanceProvider);
-    final transactionsAsync = ref.watch(transactionsProvider);
+    final filter = ref.watch(financeFilterProvider);
+    final filteredAsync = ref.watch(filteredTransactionsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Carteira'),
         actions: [
           IconButton(
+            icon: Icon(_showFilters ? Icons.filter_alt_off : Icons.filter_alt),
+            onPressed: () => setState(() => _showFilters = !_showFilters),
+          ),
+          IconButton(
             icon: const Icon(Icons.sync),
             onPressed: () async {
-              await SyncService.pushAll(ref);   // <--- ALTERADO: envia todas as tabelas
+              await SyncService.pushAll(ref);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Sincronização completa')),
@@ -39,16 +65,57 @@ class FinanceScreen extends ConsumerWidget {
             child: balanceAsync.when(
               data: (balance) => Text(
                 'Saldo: ${balance.toStringAsFixed(2)} MZN',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    fontSize: 24, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
               error: (e, _) => const Text('Erro'),
             ),
           ),
-          // Lista de transações
+
+          // Painel de filtros (expansível)
+          if (_showFilters)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  // Tipo
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: filter.type,
+                      decoration: const InputDecoration(labelText: 'Tipo'),
+                      items: _types
+                          .map((t) => DropdownMenuItem(
+                              value: t, child: Text(t == 'todas' ? 'Todas' : t)))
+                          .toList(),
+                      onChanged: (val) => ref
+                          .read(financeFilterProvider.notifier)
+                          .updateType(val!),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Categoria
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: filter.category,
+                      decoration: const InputDecoration(labelText: 'Categoria'),
+                      items: _categories
+                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (val) => ref
+                          .read(financeFilterProvider.notifier)
+                          .updateCategory(val!),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Lista filtrada
           Expanded(
-            child: transactionsAsync.when(
+            child: filteredAsync.when(
               data: (txList) => ListView.builder(
                 itemCount: txList.length,
                 itemBuilder: (_, i) {
@@ -56,7 +123,9 @@ class FinanceScreen extends ConsumerWidget {
                   final isReceita = tx.type == 'receita';
                   return ListTile(
                     leading: Icon(
-                      isReceita ? Icons.arrow_downward : Icons.arrow_upward,
+                      isReceita
+                          ? Icons.arrow_downward
+                          : Icons.arrow_upward,
                       color: isReceita ? Colors.green : Colors.red,
                     ),
                     title: Text(tx.description ?? tx.category),
@@ -74,7 +143,8 @@ class FinanceScreen extends ConsumerWidget {
                   );
                 },
               ),
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Erro: $e')),
             ),
           ),
