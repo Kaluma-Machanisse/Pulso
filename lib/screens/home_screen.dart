@@ -6,6 +6,7 @@ import 'goals_screen.dart';
 import 'tasks_screen.dart';
 import 'finance_screen.dart';
 import 'stats_screen.dart';
+import 'settings_screen.dart';  // <-- adicionado
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +23,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     TasksScreen(),
     FinanceScreen(),
     StatsScreen(),
+    SettingsScreen(),  // <-- adicionado
   ];
 
   @override
@@ -38,6 +40,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,  // importante para 5 itens
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
@@ -56,6 +59,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
             label: 'Estatísticas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Config.',
           ),
         ],
       ),
