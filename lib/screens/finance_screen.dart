@@ -84,7 +84,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                   // Tipo
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: filter.type,
+                      initialValue: filter.type,
                       decoration: const InputDecoration(labelText: 'Tipo'),
                       items: _types
                           .map((t) => DropdownMenuItem(
@@ -99,7 +99,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                   // Categoria
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: filter.category,
+                      initialValue: filter.category,
                       decoration: const InputDecoration(labelText: 'Categoria'),
                       items: _categories
                           .map((c) => DropdownMenuItem(value: c, child: Text(c)))

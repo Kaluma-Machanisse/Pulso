@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-//import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 
@@ -18,15 +17,9 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initialize() async {
-    // Aguarda um pouco para a splash ser visível (opcional)
     await Future.delayed(const Duration(milliseconds: 500));
-
-    // Tenta login automático
-    final loggedIn = await AuthService.signIn();
-
+    await AuthService.signIn(); // não guardamos a variável
     if (!mounted) return;
-
-    // Navega para o ecrã principal (substitui a rota para não voltar à splash)
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const HomeScreen()),
     );
@@ -40,29 +33,14 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.favorite_border,
-              size: 80,
-              color: Colors.white,
-            ),
+            const Icon(Icons.favorite_border, size: 80, color: Colors.white),
             const SizedBox(height: 24),
-            const Text(
-              'Pulso',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+            const Text('Pulso',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
             const SizedBox(height: 48),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
+            const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
             const SizedBox(height: 16),
-            const Text(
-              'A preparar tudo...',
-              style: TextStyle(color: Colors.white70),
-            ),
+            const Text('A preparar tudo...', style: TextStyle(color: Colors.white70)),
           ],
         ),
       ),
