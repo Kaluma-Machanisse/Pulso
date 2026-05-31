@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/theme/app_theme.dart';
-import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/supabase_config.dart';
+//import 'services/auth_service.dart';
+import 'services/notification_service.dart';
+import 'screens/splash_screen.dart';
+//import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    const ProviderScope(
-      child: PulsoApp(),
-    ),
+
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
   );
+
+  await NotificationService.initialize();
+
+  runApp(const ProviderScope(child: PulsoApp()));
 }
 
 class PulsoApp extends StatelessWidget {
@@ -19,11 +27,8 @@ class PulsoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Pulso',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
-      home: const DashboardScreen(),
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const SplashScreen(), // começa pela splash
     );
   }
 }
