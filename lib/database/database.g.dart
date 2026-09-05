@@ -124,6 +124,17 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     requiredDuringInsert: false,
     defaultValue: const Constant('Curto prazo'),
   );
+  static const VerificationMeta _archivedAtMeta = const VerificationMeta(
+    'archivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> archivedAt = GeneratedColumn<DateTime>(
+    'archived_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -136,6 +147,7 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     createdAt,
     importance,
     term,
+    archivedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -217,6 +229,12 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         term.isAcceptableOrUnknown(data['term']!, _termMeta),
       );
     }
+    if (data.containsKey('archived_at')) {
+      context.handle(
+        _archivedAtMeta,
+        archivedAt.isAcceptableOrUnknown(data['archived_at']!, _archivedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -266,6 +284,10 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         DriftSqlType.string,
         data['${effectivePrefix}term'],
       )!,
+      archivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}archived_at'],
+      ),
     );
   }
 
@@ -286,6 +308,7 @@ class Goal extends DataClass implements Insertable<Goal> {
   final DateTime createdAt;
   final String importance;
   final String term;
+  final DateTime? archivedAt;
   const Goal({
     required this.id,
     required this.title,
@@ -297,6 +320,7 @@ class Goal extends DataClass implements Insertable<Goal> {
     required this.createdAt,
     required this.importance,
     required this.term,
+    this.archivedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -315,6 +339,9 @@ class Goal extends DataClass implements Insertable<Goal> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['importance'] = Variable<String>(importance);
     map['term'] = Variable<String>(term);
+    if (!nullToAbsent || archivedAt != null) {
+      map['archived_at'] = Variable<DateTime>(archivedAt);
+    }
     return map;
   }
 
@@ -334,6 +361,9 @@ class Goal extends DataClass implements Insertable<Goal> {
       createdAt: Value(createdAt),
       importance: Value(importance),
       term: Value(term),
+      archivedAt: archivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(archivedAt),
     );
   }
 
@@ -353,6 +383,7 @@ class Goal extends DataClass implements Insertable<Goal> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       importance: serializer.fromJson<String>(json['importance']),
       term: serializer.fromJson<String>(json['term']),
+      archivedAt: serializer.fromJson<DateTime?>(json['archivedAt']),
     );
   }
   @override
@@ -369,6 +400,7 @@ class Goal extends DataClass implements Insertable<Goal> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'importance': serializer.toJson<String>(importance),
       'term': serializer.toJson<String>(term),
+      'archivedAt': serializer.toJson<DateTime?>(archivedAt),
     };
   }
 
@@ -383,6 +415,7 @@ class Goal extends DataClass implements Insertable<Goal> {
     DateTime? createdAt,
     String? importance,
     String? term,
+    Value<DateTime?> archivedAt = const Value.absent(),
   }) => Goal(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -394,6 +427,7 @@ class Goal extends DataClass implements Insertable<Goal> {
     createdAt: createdAt ?? this.createdAt,
     importance: importance ?? this.importance,
     term: term ?? this.term,
+    archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
   );
   Goal copyWithCompanion(GoalsCompanion data) {
     return Goal(
@@ -417,6 +451,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           ? data.importance.value
           : this.importance,
       term: data.term.present ? data.term.value : this.term,
+      archivedAt: data.archivedAt.present
+          ? data.archivedAt.value
+          : this.archivedAt,
     );
   }
 
@@ -432,7 +469,8 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('isCompleted: $isCompleted, ')
           ..write('createdAt: $createdAt, ')
           ..write('importance: $importance, ')
-          ..write('term: $term')
+          ..write('term: $term, ')
+          ..write('archivedAt: $archivedAt')
           ..write(')'))
         .toString();
   }
@@ -449,6 +487,7 @@ class Goal extends DataClass implements Insertable<Goal> {
     createdAt,
     importance,
     term,
+    archivedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -463,7 +502,8 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.isCompleted == this.isCompleted &&
           other.createdAt == this.createdAt &&
           other.importance == this.importance &&
-          other.term == this.term);
+          other.term == this.term &&
+          other.archivedAt == this.archivedAt);
 }
 
 class GoalsCompanion extends UpdateCompanion<Goal> {
@@ -477,6 +517,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<DateTime> createdAt;
   final Value<String> importance;
   final Value<String> term;
+  final Value<DateTime?> archivedAt;
   const GoalsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -488,6 +529,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.createdAt = const Value.absent(),
     this.importance = const Value.absent(),
     this.term = const Value.absent(),
+    this.archivedAt = const Value.absent(),
   });
   GoalsCompanion.insert({
     this.id = const Value.absent(),
@@ -500,6 +542,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.createdAt = const Value.absent(),
     this.importance = const Value.absent(),
     this.term = const Value.absent(),
+    this.archivedAt = const Value.absent(),
   }) : title = Value(title);
   static Insertable<Goal> custom({
     Expression<int>? id,
@@ -512,6 +555,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Expression<DateTime>? createdAt,
     Expression<String>? importance,
     Expression<String>? term,
+    Expression<DateTime>? archivedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -524,6 +568,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       if (createdAt != null) 'created_at': createdAt,
       if (importance != null) 'importance': importance,
       if (term != null) 'term': term,
+      if (archivedAt != null) 'archived_at': archivedAt,
     });
   }
 
@@ -538,6 +583,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Value<DateTime>? createdAt,
     Value<String>? importance,
     Value<String>? term,
+    Value<DateTime?>? archivedAt,
   }) {
     return GoalsCompanion(
       id: id ?? this.id,
@@ -550,6 +596,7 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       createdAt: createdAt ?? this.createdAt,
       importance: importance ?? this.importance,
       term: term ?? this.term,
+      archivedAt: archivedAt ?? this.archivedAt,
     );
   }
 
@@ -586,6 +633,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     if (term.present) {
       map['term'] = Variable<String>(term.value);
     }
+    if (archivedAt.present) {
+      map['archived_at'] = Variable<DateTime>(archivedAt.value);
+    }
     return map;
   }
 
@@ -601,7 +651,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('isCompleted: $isCompleted, ')
           ..write('createdAt: $createdAt, ')
           ..write('importance: $importance, ')
-          ..write('term: $term')
+          ..write('term: $term, ')
+          ..write('archivedAt: $archivedAt')
           ..write(')'))
         .toString();
   }
@@ -1702,12 +1753,313 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   }
 }
 
+class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReportsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<String> month = GeneratedColumn<String>(
+    'month',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _generatedAtMeta = const VerificationMeta(
+    'generatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> generatedAt = GeneratedColumn<DateTime>(
+    'generated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _dataJsonMeta = const VerificationMeta(
+    'dataJson',
+  );
+  @override
+  late final GeneratedColumn<String> dataJson = GeneratedColumn<String>(
+    'data_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, month, generatedAt, dataJson];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reports';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Report> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('month')) {
+      context.handle(
+        _monthMeta,
+        month.isAcceptableOrUnknown(data['month']!, _monthMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('generated_at')) {
+      context.handle(
+        _generatedAtMeta,
+        generatedAt.isAcceptableOrUnknown(
+          data['generated_at']!,
+          _generatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('data_json')) {
+      context.handle(
+        _dataJsonMeta,
+        dataJson.isAcceptableOrUnknown(data['data_json']!, _dataJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dataJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Report map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Report(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      month: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}month'],
+      )!,
+      generatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}generated_at'],
+      )!,
+      dataJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data_json'],
+      )!,
+    );
+  }
+
+  @override
+  $ReportsTable createAlias(String alias) {
+    return $ReportsTable(attachedDatabase, alias);
+  }
+}
+
+class Report extends DataClass implements Insertable<Report> {
+  final int id;
+  final String month;
+  final DateTime generatedAt;
+  final String dataJson;
+  const Report({
+    required this.id,
+    required this.month,
+    required this.generatedAt,
+    required this.dataJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['month'] = Variable<String>(month);
+    map['generated_at'] = Variable<DateTime>(generatedAt);
+    map['data_json'] = Variable<String>(dataJson);
+    return map;
+  }
+
+  ReportsCompanion toCompanion(bool nullToAbsent) {
+    return ReportsCompanion(
+      id: Value(id),
+      month: Value(month),
+      generatedAt: Value(generatedAt),
+      dataJson: Value(dataJson),
+    );
+  }
+
+  factory Report.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Report(
+      id: serializer.fromJson<int>(json['id']),
+      month: serializer.fromJson<String>(json['month']),
+      generatedAt: serializer.fromJson<DateTime>(json['generatedAt']),
+      dataJson: serializer.fromJson<String>(json['dataJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'month': serializer.toJson<String>(month),
+      'generatedAt': serializer.toJson<DateTime>(generatedAt),
+      'dataJson': serializer.toJson<String>(dataJson),
+    };
+  }
+
+  Report copyWith({
+    int? id,
+    String? month,
+    DateTime? generatedAt,
+    String? dataJson,
+  }) => Report(
+    id: id ?? this.id,
+    month: month ?? this.month,
+    generatedAt: generatedAt ?? this.generatedAt,
+    dataJson: dataJson ?? this.dataJson,
+  );
+  Report copyWithCompanion(ReportsCompanion data) {
+    return Report(
+      id: data.id.present ? data.id.value : this.id,
+      month: data.month.present ? data.month.value : this.month,
+      generatedAt: data.generatedAt.present
+          ? data.generatedAt.value
+          : this.generatedAt,
+      dataJson: data.dataJson.present ? data.dataJson.value : this.dataJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Report(')
+          ..write('id: $id, ')
+          ..write('month: $month, ')
+          ..write('generatedAt: $generatedAt, ')
+          ..write('dataJson: $dataJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, month, generatedAt, dataJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Report &&
+          other.id == this.id &&
+          other.month == this.month &&
+          other.generatedAt == this.generatedAt &&
+          other.dataJson == this.dataJson);
+}
+
+class ReportsCompanion extends UpdateCompanion<Report> {
+  final Value<int> id;
+  final Value<String> month;
+  final Value<DateTime> generatedAt;
+  final Value<String> dataJson;
+  const ReportsCompanion({
+    this.id = const Value.absent(),
+    this.month = const Value.absent(),
+    this.generatedAt = const Value.absent(),
+    this.dataJson = const Value.absent(),
+  });
+  ReportsCompanion.insert({
+    this.id = const Value.absent(),
+    required String month,
+    this.generatedAt = const Value.absent(),
+    required String dataJson,
+  }) : month = Value(month),
+       dataJson = Value(dataJson);
+  static Insertable<Report> custom({
+    Expression<int>? id,
+    Expression<String>? month,
+    Expression<DateTime>? generatedAt,
+    Expression<String>? dataJson,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (month != null) 'month': month,
+      if (generatedAt != null) 'generated_at': generatedAt,
+      if (dataJson != null) 'data_json': dataJson,
+    });
+  }
+
+  ReportsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? month,
+    Value<DateTime>? generatedAt,
+    Value<String>? dataJson,
+  }) {
+    return ReportsCompanion(
+      id: id ?? this.id,
+      month: month ?? this.month,
+      generatedAt: generatedAt ?? this.generatedAt,
+      dataJson: dataJson ?? this.dataJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (month.present) {
+      map['month'] = Variable<String>(month.value);
+    }
+    if (generatedAt.present) {
+      map['generated_at'] = Variable<DateTime>(generatedAt.value);
+    }
+    if (dataJson.present) {
+      map['data_json'] = Variable<String>(dataJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReportsCompanion(')
+          ..write('id: $id, ')
+          ..write('month: $month, ')
+          ..write('generatedAt: $generatedAt, ')
+          ..write('dataJson: $dataJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $GoalsTable goals = $GoalsTable(this);
   late final $TasksTable tasks = $TasksTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
+  late final $ReportsTable reports = $ReportsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1716,6 +2068,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     goals,
     tasks,
     transactions,
+    reports,
   ];
 }
 
@@ -1731,6 +2084,7 @@ typedef $$GoalsTableCreateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<String> importance,
       Value<String> term,
+      Value<DateTime?> archivedAt,
     });
 typedef $$GoalsTableUpdateCompanionBuilder =
     GoalsCompanion Function({
@@ -1744,6 +2098,7 @@ typedef $$GoalsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<String> importance,
       Value<String> term,
+      Value<DateTime?> archivedAt,
     });
 
 class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
@@ -1801,6 +2156,11 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
 
   ColumnFilters<String> get term => $composableBuilder(
     column: $table.term,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1863,6 +2223,11 @@ class $$GoalsTableOrderingComposer
     column: $table.term,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GoalsTableAnnotationComposer
@@ -1913,6 +2278,11 @@ class $$GoalsTableAnnotationComposer
 
   GeneratedColumn<String> get term =>
       $composableBuilder(column: $table.term, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get archivedAt => $composableBuilder(
+    column: $table.archivedAt,
+    builder: (column) => column,
+  );
 }
 
 class $$GoalsTableTableManager
@@ -1953,6 +2323,7 @@ class $$GoalsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String> importance = const Value.absent(),
                 Value<String> term = const Value.absent(),
+                Value<DateTime?> archivedAt = const Value.absent(),
               }) => GoalsCompanion(
                 id: id,
                 title: title,
@@ -1964,6 +2335,7 @@ class $$GoalsTableTableManager
                 createdAt: createdAt,
                 importance: importance,
                 term: term,
+                archivedAt: archivedAt,
               ),
           createCompanionCallback:
               ({
@@ -1977,6 +2349,7 @@ class $$GoalsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String> importance = const Value.absent(),
                 Value<String> term = const Value.absent(),
+                Value<DateTime?> archivedAt = const Value.absent(),
               }) => GoalsCompanion.insert(
                 id: id,
                 title: title,
@@ -1988,6 +2361,7 @@ class $$GoalsTableTableManager
                 createdAt: createdAt,
                 importance: importance,
                 term: term,
+                archivedAt: archivedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -2550,6 +2924,177 @@ typedef $$TransactionsTableProcessedTableManager =
       Transaction,
       PrefetchHooks Function()
     >;
+typedef $$ReportsTableCreateCompanionBuilder =
+    ReportsCompanion Function({
+      Value<int> id,
+      required String month,
+      Value<DateTime> generatedAt,
+      required String dataJson,
+    });
+typedef $$ReportsTableUpdateCompanionBuilder =
+    ReportsCompanion Function({
+      Value<int> id,
+      Value<String> month,
+      Value<DateTime> generatedAt,
+      Value<String> dataJson,
+    });
+
+class $$ReportsTableFilterComposer
+    extends Composer<_$AppDatabase, $ReportsTable> {
+  $$ReportsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dataJson => $composableBuilder(
+    column: $table.dataJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReportsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReportsTable> {
+  $$ReportsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dataJson => $composableBuilder(
+    column: $table.dataJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReportsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReportsTable> {
+  $$ReportsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dataJson =>
+      $composableBuilder(column: $table.dataJson, builder: (column) => column);
+}
+
+class $$ReportsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReportsTable,
+          Report,
+          $$ReportsTableFilterComposer,
+          $$ReportsTableOrderingComposer,
+          $$ReportsTableAnnotationComposer,
+          $$ReportsTableCreateCompanionBuilder,
+          $$ReportsTableUpdateCompanionBuilder,
+          (Report, BaseReferences<_$AppDatabase, $ReportsTable, Report>),
+          Report,
+          PrefetchHooks Function()
+        > {
+  $$ReportsTableTableManager(_$AppDatabase db, $ReportsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReportsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReportsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReportsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> month = const Value.absent(),
+                Value<DateTime> generatedAt = const Value.absent(),
+                Value<String> dataJson = const Value.absent(),
+              }) => ReportsCompanion(
+                id: id,
+                month: month,
+                generatedAt: generatedAt,
+                dataJson: dataJson,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String month,
+                Value<DateTime> generatedAt = const Value.absent(),
+                required String dataJson,
+              }) => ReportsCompanion.insert(
+                id: id,
+                month: month,
+                generatedAt: generatedAt,
+                dataJson: dataJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReportsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReportsTable,
+      Report,
+      $$ReportsTableFilterComposer,
+      $$ReportsTableOrderingComposer,
+      $$ReportsTableAnnotationComposer,
+      $$ReportsTableCreateCompanionBuilder,
+      $$ReportsTableUpdateCompanionBuilder,
+      (Report, BaseReferences<_$AppDatabase, $ReportsTable, Report>),
+      Report,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2560,4 +3105,6 @@ class $AppDatabaseManager {
       $$TasksTableTableManager(_db, _db.tasks);
   $$TransactionsTableTableManager get transactions =>
       $$TransactionsTableTableManager(_db, _db.transactions);
+  $$ReportsTableTableManager get reports =>
+      $$ReportsTableTableManager(_db, _db.reports);
 }

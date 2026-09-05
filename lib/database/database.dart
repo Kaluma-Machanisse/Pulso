@@ -22,6 +22,20 @@ class Goals extends Table {
   TextColumn get importance => text().withDefault(const Constant('Média'))();
   // term: 'Curto prazo' | 'Longo prazo'
   TextColumn get term => text().withDefault(const Constant('Curto prazo'))();
+
+  // v3 — objectivos 100% concluídos são arquivados (não apagados).
+  // Se != null, o objectivo sai da lista principal.
+  DateTimeColumn get archivedAt => dateTime().nullable()();
+}
+
+// Tabela de Relatórios mensais (v3)
+class Reports extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  // Mês a que o relatório diz respeito, no formato 'AAAA-MM'.
+  TextColumn get month => text()();
+  DateTimeColumn get generatedAt => dateTime().withDefault(currentDateAndTime)();
+  // Conteúdo do relatório serializado em JSON (ver ReportService).
+  TextColumn get dataJson => text()();
 }
 
 // Tabela de Tarefas
@@ -50,12 +64,12 @@ class Transactions extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [Goals, Tasks, Transactions])
+@DriftDatabase(tables: [Goals, Tasks, Transactions, Reports])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -67,6 +81,11 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) {
             await m.addColumn(goals, goals.importance);
             await m.addColumn(goals, goals.term);
+          }
+          // v2 -> v3: arquivo de objectivos + tabela de relatórios.
+          if (from < 3) {
+            await m.addColumn(goals, goals.archivedAt);
+            await m.createTable(reports);
           }
         },
         // NOTA: `PRAGMA foreign_keys = ON` NÃO é activado de propósito.

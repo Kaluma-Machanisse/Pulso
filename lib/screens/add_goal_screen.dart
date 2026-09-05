@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show Value;
 import '../database/database.dart';
 import '../providers/goal_providers.dart';
 import '../services/goal_reminder_service.dart';
+import '../services/goal_archive_service.dart';
 
 class AddGoalScreen extends ConsumerStatefulWidget {
   final Goal? goal;
@@ -98,7 +99,9 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
         await ref.read(updateGoalProvider(updatedGoal).future);
       }
 
-      // Reagenda os lembretes com base no estado actualizado da BD.
+      // Arquiva se chegou a 100% (ou desarquiva se voltou atrás) e
+      // reagenda os lembretes com base no estado actualizado da BD.
+      await GoalArchiveService.sweep(ref);
       await GoalReminderService.rescheduleAll(ref);
 
       if (mounted) Navigator.of(context).pop();

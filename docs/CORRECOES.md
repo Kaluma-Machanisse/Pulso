@@ -113,3 +113,50 @@ Ronda de correcções de bugs, segurança e robustez. Nada aqui muda o
 - `dart analyze lib` → **No issues found**.
 - Migração v1→v2 testada a correr no Linux desktop (sem perda de dados; o
   agendamento é ignorado no desktop, como esperado).
+
+---
+
+# Objectivos v2 — arquivo automático e relatórios mensais — Setembro 2026
+
+## Base de dados (schema v2 → v3)
+
+- `Goals.archivedAt` (dateTime?, v3): objectivos a 100% são **arquivados**
+  (saem da lista principal) em vez de apagados.
+- Nova tabela `Reports` (`month`, `generatedAt`, `dataJson`) — histórico local
+  de relatórios mensais.
+- `onUpgrade` v2→v3: `addColumn(archivedAt)` + `createTable(reports)`.
+
+## Arquivo de objectivos
+
+- `goal_archive_service.dart`: `apply()` arquiva um objectivo a ≥100%
+  (`isCompleted = true`, `archivedAt = agora`, cancela lembretes) e desarquiva
+  se o progresso descer; `sweep()` varre todos (arranque + após guardar).
+- `goal_providers.dart`: `goalsProvider` só devolve activos; novo
+  `archivedGoalsProvider`.
+- `goals_screen.dart`: menu (3 pontos, canto superior direito) com "Objectivos
+  arquivados" e "Relatórios mensais"; **swipe** para eliminar (com confirmação)
+  e menu por linha (Editar / Eliminar).
+- Novo `archived_goals_screen.dart`.
+
+## Relatórios mensais (módulo Objectivos)
+
+- `report_service.dart`: `MonthlyReport` (concluídos no mês + activos com
+  progresso), `ensureMonthlyReports()` gera os meses em falta no arranque
+  (nunca o mês corrente), `expiredReports()` / `deleteReports()` para retenção.
+- `report_pdf.dart`: exporta o relatório em **PDF** (resumo, tabela de
+  concluídos, barras de progresso dos activos) via `printing`.
+- `report_providers.dart`: `reportsProvider` (stream do histórico).
+- Novos ecrãs `reports_screen.dart` (histórico) e `report_detail_screen.dart`.
+- `home_screen.dart`: no arranque faz sweep de arquivo, gera relatórios em
+  falta e **pergunta** antes de apagar relatórios com mais de 1 ano.
+
+## Dependências
+
+- `pdf` e `printing` adicionados.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- Migração v2→v3 testada no Linux desktop (sem perda de dados).
+- Nota: `printing` (exportar PDF) e as notificações agendadas só funcionam
+  a sério no Android; no desktop são ignorados/no-op.

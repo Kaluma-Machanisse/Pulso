@@ -48,7 +48,7 @@ lib/
 
 ## 3. Modelo de dados (`lib/database/database.dart`)
 
-`schemaVersion = 2`. Três tabelas, todas com `id` autoincrement e `createdAt`.
+`schemaVersion = 3`. Quatro tabelas, todas com `id` autoincrement.
 
 ### Goals (Objectivos)
 | Campo | Tipo | Notas |
@@ -61,6 +61,17 @@ lib/
 | isCompleted | bool | default `false` |
 | importance | text | **v2** — `Baixa`/`Média`/`Alta`/`Crítica`; define a frequência de lembretes (1/2/3/4 por semana). Default `Média` |
 | term | text | **v2** — `Curto prazo`/`Longo prazo`; organização/filtro. Default `Curto prazo` |
+| archivedAt | dateTime? | **v3** — preenchido quando o objectivo chega a 100%. Se `!= null`, sai da lista principal (fica em "Objectivos arquivados"). Não se apagam objectivos concluídos |
+
+### Reports (Relatórios mensais) — v3
+| Campo | Tipo | Notas |
+|---|---|---|
+| month | text | `'AAAA-MM'` a que o relatório diz respeito |
+| generatedAt | dateTime | quando foi gerado |
+| dataJson | text | conteúdo serializado (`MonthlyReport.toJson`) |
+
+> Só existe o relatório de **Objectivos** por agora. Relatórios financeiros e de
+> tarefas virão depois, na mesma tabela (o `dataJson` acomoda os campos novos).
 
 ### Tasks (Tarefas)
 | Campo | Tipo | Notas |
@@ -97,6 +108,8 @@ lib/
   valores por omissão. Sem perda de dados.
 - Se sincronizares com o Supabase, a tabela `goals` remota também precisa das
   colunas — ver `docs/supabase_migracao_v2.sql`.
+- **v2 → v3:** `m.addColumn(goals, goals.archivedAt)` + `m.createTable(reports)`.
+  A tabela `Reports` é só local (não sincroniza).
 
 Sempre que mudares colunas:
 
@@ -114,8 +127,11 @@ Sempre que mudares colunas:
 |---|---|---|
 | `splash_screen.dart` | Stateful | Delay 500ms → `AuthService.signIn()` → `HomeScreen` |
 | `home_screen.dart` | ConsumerStateful | `BottomNavigationBar` com 5 abas; no arranque chama `SmsService.initialize` + `ReminderService.checkAndNotify` |
-| `goals_screen.dart` | ConsumerWidget | Lista objectivos; toque = editar, toque longo = eliminar (com confirmação) |
-| `add_goal_screen.dart` | ConsumerStateful | Formulário criar/editar objectivo (título, descrição, categoria, data, slider de progresso) |
+| `goals_screen.dart` | ConsumerWidget | Lista de objectivos **activos**; toque = editar, **swipe** ou menu (3 pontos) = eliminar (com confirmação); menu do AppBar → arquivados / relatórios |
+| `archived_goals_screen.dart` | ConsumerWidget | Objectivos concluídos (arquivados); toque = ver/editar, toque longo = apagar de vez |
+| `add_goal_screen.dart` | ConsumerStateful | Formulário criar/editar objectivo (título, descrição, categoria, **importância**, **prazo**, data, progresso). Ao guardar: sweep de arquivo + reagenda lembretes |
+| `reports_screen.dart` | ConsumerWidget | Histórico de relatórios mensais; toque = detalhe, botão = exportar PDF, toque longo = apagar |
+| `report_detail_screen.dart` | StatelessWidget | Relatório de um mês (resumo + concluídos + progresso dos activos) + exportar PDF |
 | `tasks_screen.dart` | ConsumerWidget | Lista tarefas; toque = editar, toque longo = eliminar (com confirmação) |
 | `add_task_screen.dart` | ConsumerStateful | Formulário criar/editar tarefa |
 | `finance_screen.dart` | ConsumerStateful | Saldo + lista filtrável (tipo, categoria, mês, ano) + botão de push para Supabase com feedback de sucesso/erro |
@@ -149,7 +165,10 @@ Sempre que mudares colunas:
 |---|---|
 | `auth_service.dart` | `signIn()` — login silencioso com credenciais fixas; reusa a sessão se ainda válida |
 | `notification_service.dart` | `initialize()` — canal Android + fuso horário (`Africa/Maputo`); `showNotification()` imediata; `scheduleAt()` agenda uma única no futuro (`zonedSchedule`, modo inexacto); `cancel()`/`cancelRange()` |
-| `goal_reminder_service.dart` | Agenda os lembretes de cada objectivo conforme a **importância** (1–4/semana) + 1 no dia da data-alvo; janela de 90 dias; `rescheduleForGoal`, `rescheduleAll` (arranque), `cancelForGoal` (ao eliminar). Ver §11 |
+| `goal_reminder_service.dart` | Agenda os lembretes de cada objectivo conforme a **importância** (1–4/semana) + 1 no dia da data-alvo; janela de 90 dias; `rescheduleForGoal`, `rescheduleAll` (arranque), `cancelForGoal` (ao eliminar). Ver §10 |
+| `goal_archive_service.dart` | Arquiva objectivos a 100% (`archivedAt`), desarquiva se o progresso descer; `apply()` / `sweep()` |
+| `report_service.dart` | `MonthlyReport` (objectivos concluídos no mês + activos), gera os meses em falta no arranque, retenção de 1 ano |
+| `report_pdf.dart` | Exporta um `MonthlyReport` para PDF (via `printing`) |
 | `reminder_service.dart` | `checkAndNotify(ref)` — verificação **ao abrir a app**: respeita `notificationsEnabled`; notifica tarefas a vencer hoje/amanhã e objectivos <50% com data-alvo em ≤7 dias. Complementa (não substitui) os lembretes agendados |
 | `sms_service.dart` | Pede permissão SMS, escuta mensagens recebidas, passa por `SmsParser` e grava a transação (`await ... .future`) |
 | `sms_parser.dart` | Regras regex para **M-Pesa** e **BIM**: extrai `amount`, `type` (receita/despesa), `reference` |
@@ -238,7 +257,8 @@ flutter build apk --release
 | `b46f39f` | 2026-05-31 | **Fase G** — filtros de transações (tipo e categoria) |
 | `4b08838` | 2026-05-31 | Correcção de erros e avisos de depreciação |
 | *(local)* | 2026-09 | **Manutenção** — segurança, sync robusta, feedback de erros, confirmações, filtros mês/ano. Ver `docs/CORRECOES.md` |
-| *(local)* | 2026-09 | **Objectivos v1** — importância + prazo, lembretes agendados. Ver §11 e `docs/CORRECOES.md` |
+| *(local)* | 2026-09 | **Objectivos v1** — importância + prazo, lembretes agendados. Ver §10 e `docs/CORRECOES.md` |
+| *(local)* | 2026-09 | **Objectivos v2** — arquivo automático de concluídos + relatórios mensais em PDF. Ver §12 e `docs/CORRECOES.md` |
 
 ---
 
@@ -292,7 +312,44 @@ intervalo `[base, base+99]`.
 
 ---
 
-## 11. Convenções
+## 12. Arquivo de objectivos e relatórios mensais
+
+### Arquivo automático
+
+- Quando `progressPercentage >= 100`, o objectivo é **arquivado**:
+  `isCompleted = true`, `archivedAt = agora`, e os lembretes são cancelados.
+- Se o progresso for editado para baixo de 100, o objectivo **desarquiva**.
+- `GoalArchiveService.sweep()` corre no arranque da app e depois de guardar um
+  objectivo. Nada é apagado automaticamente.
+- A lista principal (`goalsProvider`) só mostra activos; os arquivados estão em
+  **Objectivos → menu → Objectivos arquivados**.
+
+### Relatórios mensais (só Objectivos, por agora)
+
+- **Conteúdo:** objectivos concluídos nesse mês + objectivos activos com
+  progresso (no momento da geração) + contagens e progresso médio.
+- **Geração:** `ReportService.ensureMonthlyReports()` no arranque gera todos os
+  meses em falta, do mês do objectivo mais antigo até ao **mês anterior**
+  (nunca o mês corrente). Um mês sem actividade não gera relatório.
+- **Histórico:** tabela `Reports` (local). Ecrã em
+  **Objectivos → menu → Relatórios mensais**.
+- **PDF:** `ReportPdf.open()` gera e abre o diálogo do sistema
+  (ver / imprimir / partilhar). Layout: cabeçalho, cartões de resumo, tabela de
+  concluídos, barras de progresso dos activos.
+- **Retenção:** relatórios com mais de 12 meses. No arranque, se existirem, a
+  app **pergunta** antes de apagar (`_perguntarRetencao` no `HomeScreen`).
+- **Plataforma:** `printing` (exportar PDF) só funciona a sério em Android; no
+  desktop o diálogo pode não abrir.
+
+### Evolução
+
+- Adicionar relatório **financeiro** e de **tarefas** (mesma tabela `Reports`,
+  novos campos no `dataJson`).
+- Gráficos mais ricos no PDF (evolução do progresso ao longo do mês).
+
+---
+
+## 13. Convenções
 
 - Idioma: **português europeu** em UI, comentários e nomes de domínio (`objectivo`, `receita`).
 - Código gerado (`*.g.dart`) nunca é editado à mão.
