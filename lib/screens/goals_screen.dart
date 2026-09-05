@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/database.dart';
 import '../providers/goal_providers.dart';
+import '../providers/goal_selection_provider.dart';
 import '../services/goal_reminder_service.dart';
 import '../services/goal_archive_service.dart';
 import '../providers/database_provider.dart';
@@ -57,73 +58,136 @@ DeadlineStatus deadlineInfo(DateTime? target) {
   return DeadlineStatus('faltam $dias d', const Color(0xFF388E3C), false);
 }
 
+Future<void> _eliminarObjectivo(WidgetRef ref, int id) async {
+  await ref.read(deleteGoalProvider(id).future);
+  await GoalReminderService.cancelForGoal(id);
+}
+
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});
+
+  Future<void> _eliminarSelecionados(
+      BuildContext context, WidgetRef ref, Set<int> ids) async {
+    final n = ids.length;
+    final ok = await confirmarEliminacao(
+        context, n == 1 ? '1 objectivo' : '$n objectivos');
+    if (!ok) return;
+    for (final id in ids) {
+      await _eliminarObjectivo(ref, id);
+    }
+    ref.read(goalSelectionProvider.notifier).clear();
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final goalsAsync = ref.watch(goalsProvider);
+    final selected = ref.watch(goalSelectionProvider);
+    final selecting = selected.isNotEmpty;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Objectivos'),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              final page = value == 'arquivados'
-                  ? const ArchivedGoalsScreen()
-                  : const ReportsScreen();
-              Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => page));
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                  value: 'arquivados', child: Text('Objectivos arquivados')),
-              PopupMenuItem(
-                  value: 'relatorios', child: Text('Relatórios mensais')),
-            ],
-          ),
-        ],
-      ),
-      body: goalsAsync.when(
-        data: (goals) {
-          if (goals.isEmpty) {
-            return const _EmptyState();
-          }
-          // Agrupar por prazo, cada grupo ordenado pela data-alvo mais próxima.
-          int ordenar(Goal a, Goal b) {
-            final da = a.targetDate ?? DateTime(9999);
-            final db = b.targetDate ?? DateTime(9999);
-            return da.compareTo(db);
-          }
+    final allIds = goalsAsync.maybeWhen(
+      data: (g) => g.map((e) => e.id).toSet(),
+      orElse: () => <int>{},
+    );
 
-          final curto = goals.where((g) => g.term == 'Curto prazo').toList()
-            ..sort(ordenar);
-          final longo = goals.where((g) => g.term == 'Longo prazo').toList()
-            ..sort(ordenar);
+    return PopScope(
+      canPop: !selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) ref.read(goalSelectionProvider.notifier).clear();
+      },
+      child: Scaffold(
+        appBar: selecting
+            ? AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () =>
+                      ref.read(goalSelectionProvider.notifier).clear(),
+                ),
+                title: Text('${selected.length} selecionado'
+                    '${selected.length == 1 ? '' : 's'}'),
+                actions: [
+                  IconButton(
+                    tooltip: 'Selecionar todos',
+                    icon: const Icon(Icons.select_all),
+                    onPressed: () => ref
+                        .read(goalSelectionProvider.notifier)
+                        .selectAll(allIds),
+                  ),
+                  IconButton(
+                    tooltip: 'Eliminar',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () =>
+                        _eliminarSelecionados(context, ref, {...selected}),
+                  ),
+                ],
+              )
+            : AppBar(
+                title: const Text('Objectivos'),
+                actions: [
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      final page = value == 'arquivados'
+                          ? const ArchivedGoalsScreen()
+                          : const ReportsScreen();
+                      Navigator.of(context)
+                          .push(MaterialPageRoute(builder: (_) => page));
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                          value: 'arquivados',
+                          child: Text('Objectivos arquivados')),
+                      PopupMenuItem(
+                          value: 'relatorios',
+                          child: Text('Relatórios mensais')),
+                    ],
+                  ),
+                ],
+              ),
+        body: goalsAsync.when(
+          data: (goals) {
+            if (goals.isEmpty) return const _EmptyState();
 
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 88, top: 4),
-            children: [
-              if (curto.isNotEmpty) ...[
-                const _SectionHeader('Curto prazo'),
-                ...curto.map((g) => _GoalCard(goal: g)),
+            int ordenar(Goal a, Goal b) {
+              final da = a.targetDate ?? DateTime(9999);
+              final db = b.targetDate ?? DateTime(9999);
+              return da.compareTo(db);
+            }
+
+            final curto = goals.where((g) => g.term == 'Curto prazo').toList()
+              ..sort(ordenar);
+            final longo = goals.where((g) => g.term == 'Longo prazo').toList()
+              ..sort(ordenar);
+
+            _GoalCard card(Goal g) => _GoalCard(
+                  goal: g,
+                  selecting: selecting,
+                  selected: selected.contains(g.id),
+                );
+
+            return ListView(
+              padding: const EdgeInsets.only(bottom: 88, top: 4),
+              children: [
+                if (curto.isNotEmpty) ...[
+                  const _SectionHeader('Curto prazo'),
+                  ...curto.map(card),
+                ],
+                if (longo.isNotEmpty) ...[
+                  const _SectionHeader('Longo prazo'),
+                  ...longo.map(card),
+                ],
               ],
-              if (longo.isNotEmpty) ...[
-                const _SectionHeader('Longo prazo'),
-                ...longo.map((g) => _GoalCard(goal: g)),
-              ],
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Erro: $e')),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddGoalScreen()),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Erro: $e')),
         ),
-        child: const Icon(Icons.add),
+        floatingActionButton: selecting
+            ? null
+            : FloatingActionButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AddGoalScreen()),
+                ),
+                child: const Icon(Icons.add),
+              ),
       ),
     );
   }
@@ -162,8 +226,7 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(Icons.flag_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 12),
-            Text('Ainda não tens objectivos.',
-                style: TextStyle(fontSize: 16)),
+            Text('Ainda não tens objectivos.', style: TextStyle(fontSize: 16)),
             SizedBox(height: 4),
             Text('Toca em + para criar o primeiro.',
                 style: TextStyle(color: Colors.grey)),
@@ -176,7 +239,14 @@ class _EmptyState extends StatelessWidget {
 
 class _GoalCard extends ConsumerWidget {
   final Goal goal;
-  const _GoalCard({required this.goal});
+  final bool selecting;
+  final bool selected;
+
+  const _GoalCard({
+    required this.goal,
+    this.selecting = false,
+    this.selected = false,
+  });
 
   Future<void> _concluir(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
@@ -205,45 +275,65 @@ class _GoalCard extends ConsumerWidget {
     await GoalReminderService.rescheduleAll(ref);
   }
 
-  Future<void> _eliminar(WidgetRef ref) async {
-    await ref.read(deleteGoalProvider(goal.id).future);
-    await GoalReminderService.cancelForGoal(goal.id);
-  }
+  void _toggle(WidgetRef ref) =>
+      ref.read(goalSelectionProvider.notifier).toggle(goal.id);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
     final cor = importanceColor(goal.importance);
     final prazo = deadlineInfo(goal.targetDate);
     final progresso = goal.progressPercentage.clamp(0, 100);
 
-    return Dismissible(
-      key: ValueKey(goal.id),
-      direction: DismissDirection.horizontal,
-      background: _swipeBg(Alignment.centerLeft),
-      secondaryBackground: _swipeBg(Alignment.centerRight),
-      confirmDismiss: (_) => confirmarEliminacao(context, goal.title),
-      onDismissed: (_) => _eliminar(ref),
-      child: Card(
-        margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => AddGoalScreen(goal: goal)),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(width: 5, color: cor), // faixa de importância
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            // ponto de prazo
+    final card = Card(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: selected ? scheme.primary : scheme.outlineVariant,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      color: selected ? scheme.primary.withValues(alpha: 0.06) : null,
+      child: InkWell(
+        onTap: () {
+          if (selecting) {
+            _toggle(ref);
+          } else {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => AddGoalScreen(goal: goal)),
+            );
+          }
+        },
+        onLongPress: selecting ? null : () => _toggle(ref),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 5, color: cor), // faixa de importância
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (selecting)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Icon(
+                                selected
+                                    ? Icons.check_circle
+                                    : Icons.circle_outlined,
+                                size: 20,
+                                color: selected
+                                    ? scheme.primary
+                                    : scheme.outline,
+                              ),
+                            )
+                          else
                             Container(
                               width: 10,
                               height: 10,
@@ -253,16 +343,17 @@ class _GoalCard extends ConsumerWidget {
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            Expanded(
-                              child: Text(
-                                goal.title,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 15),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                          Expanded(
+                            child: Text(
+                              goal.title,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            _Chip(text: goal.importance, color: cor),
+                          ),
+                          _Chip(text: goal.importance, color: cor),
+                          if (!selecting)
                             PopupMenuButton<String>(
                               padding: EdgeInsets.zero,
                               onSelected: (v) async {
@@ -272,10 +363,12 @@ class _GoalCard extends ConsumerWidget {
                                           AddGoalScreen(goal: goal)));
                                 } else if (v == 'concluir') {
                                   await _concluir(context, ref);
+                                } else if (v == 'selecionar') {
+                                  _toggle(ref);
                                 } else if (v == 'eliminar') {
                                   if (await confirmarEliminacao(
                                       context, goal.title)) {
-                                    await _eliminar(ref);
+                                    await _eliminarObjectivo(ref, goal.id);
                                   }
                                 }
                               },
@@ -286,51 +379,55 @@ class _GoalCard extends ConsumerWidget {
                                     value: 'concluir',
                                     child: Text('Marcar como concluído')),
                                 PopupMenuItem(
+                                    value: 'selecionar',
+                                    child: Text('Selecionar')),
+                                PopupMenuItem(
                                     value: 'eliminar',
                                     child: Text('Eliminar')),
                               ],
                             ),
-                          ],
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 18, right: 8),
-                          child: Text(
-                            '${goal.category}  ·  ${prazo.texto}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: prazo.atrasado
-                                  ? const Color(0xFFD32F2F)
-                                  : Colors.grey.shade600,
-                              fontWeight: prazo.atrasado
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 18, right: 8),
+                        child: Text(
+                          '${goal.category}  ·  ${prazo.texto}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: prazo.atrasado
+                                ? const Color(0xFFD32F2F)
+                                : Colors.grey.shade600,
+                            fontWeight: prazo.atrasado
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 18, right: 8),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: progresso / 100,
-                                    minHeight: 8,
-                                    backgroundColor: Colors.grey.shade300,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        progresso >= 100
-                                            ? const Color(0xFF388E3C)
-                                            : cor),
-                                  ),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 18, right: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: progresso / 100,
+                                  minHeight: 8,
+                                  backgroundColor: Colors.grey.shade300,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      progresso >= 100
+                                          ? const Color(0xFF388E3C)
+                                          : cor),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text('$progresso%',
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('$progresso%',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold)),
+                            if (!selecting)
                               TextButton(
                                 onPressed: () => _concluir(context, ref),
                                 style: TextButton.styleFrom(
@@ -340,18 +437,30 @@ class _GoalCard extends ConsumerWidget {
                                 ),
                                 child: const Text('Concluir'),
                               ),
-                            ],
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
+    );
+
+    // Sem swipe durante a seleção múltipla (evita conflito de gestos).
+    if (selecting) return card;
+
+    return Dismissible(
+      key: ValueKey(goal.id),
+      direction: DismissDirection.horizontal,
+      background: _swipeBg(Alignment.centerLeft),
+      secondaryBackground: _swipeBg(Alignment.centerRight),
+      confirmDismiss: (_) => confirmarEliminacao(context, goal.title),
+      onDismissed: (_) => _eliminarObjectivo(ref, goal.id),
+      child: card,
     );
   }
 

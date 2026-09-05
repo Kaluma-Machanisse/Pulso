@@ -203,6 +203,17 @@ Ronda de correcções de bugs, segurança e robustez. Nada aqui muda o
 - **Em falta (próximo):** `flutter_native_splash` (sem flash branco) e ícone
   de app a partir do símbolo.
 
+## Seleção múltipla nos Objectivos
+
+- Novo `goal_selection_provider.dart` (`Set<int>` de ids; vazio = modo desligado).
+- `goals_screen.dart`: toque longo num cartão (ou menu → "Selecionar") entra em
+  modo de seleção. AppBar contextual com contagem, **selecionar todos** e
+  **eliminar** (com confirmação "Eliminar N objectivos?"). O X (ou o botão
+  Voltar, via `PopScope`) sai do modo.
+- Durante a seleção: cartão mostra círculo/check e destaque; toque alterna;
+  swipe, FAB e botões por-cartão ficam ocultos para não haver conflito de gestos.
+- Eliminar em lote cancela também os lembretes agendados de cada objectivo.
+
 ## Verificação
 
 - `dart analyze lib` → **No issues found**.
