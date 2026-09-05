@@ -46,13 +46,14 @@ lib/
    └─ confirm_dialog.dart      Diálogo genérico de confirmação de eliminação
 
 assets/fonts/                  Hanken Grotesk (app) + Familjen Grotesk (wordmark)
+assets/icon/                   Fonte do ícone da app (gerado por test/gen_icons_test.dart)
 ```
 
 ---
 
 ## 3. Modelo de dados (`lib/database/database.dart`)
 
-`schemaVersion = 3`. Quatro tabelas, todas com `id` autoincrement.
+`schemaVersion = 4`. Cinco tabelas, todas com `id` autoincrement.
 
 ### Goals (Objectivos)
 | Campo | Tipo | Notas |
@@ -67,15 +68,24 @@ assets/fonts/                  Hanken Grotesk (app) + Familjen Grotesk (wordmark
 | term | text | **v2** — `Curto prazo`/`Longo prazo`; organização/filtro. Default `Curto prazo` |
 | archivedAt | dateTime? | **v3** — preenchido quando o objectivo chega a 100%. Se `!= null`, sai da lista principal (fica em "Objectivos arquivados"). Não se apagam objectivos concluídos |
 
-### Reports (Relatórios mensais) — v3
+### Reports (Relatórios mensais) — v3/v4
 | Campo | Tipo | Notas |
 |---|---|---|
 | month | text | `'AAAA-MM'` a que o relatório diz respeito |
+| type | text | **v4** — `objectivos` \| `financeiro`. Default `objectivos` |
 | generatedAt | dateTime | quando foi gerado |
-| dataJson | text | conteúdo serializado (`MonthlyReport.toJson`) |
+| dataJson | text | conteúdo serializado (`MonthlyReport` ou `FinancialReport`) |
 
-> Só existe o relatório de **Objectivos** por agora. Relatórios financeiros e de
-> tarefas virão depois, na mesma tabela (o `dataJson` acomoda os campos novos).
+### Budgets (Orçamentos por categoria) — v4
+| Campo | Tipo | Notas |
+|---|---|---|
+| category | text | categoria de despesa |
+| monthlyLimit | real | limite mensal |
+
+> Reports e Budgets são **locais** (não entram na sincronização Supabase).
+
+> Há relatórios de **Objectivos** e **Financeiro**. Um relatório de tarefas
+> virá depois, na mesma tabela (`dataJson` acomoda os campos novos).
 
 ### Tasks (Tarefas)
 | Campo | Tipo | Notas |
@@ -136,10 +146,11 @@ Sempre que mudares colunas:
 | `add_goal_screen.dart` | ConsumerStateful | Formulário criar/editar objectivo (título, descrição, categoria, **importância**, **prazo**, data, progresso). Ao guardar: sweep de arquivo + reagenda lembretes |
 | `reports_screen.dart` | ConsumerWidget | Histórico de relatórios mensais; toque = detalhe, botão = exportar PDF, toque longo = apagar |
 | `report_detail_screen.dart` | StatelessWidget | Relatório de um mês (resumo + concluídos + progresso dos activos) + exportar PDF |
-| `tasks_screen.dart` | ConsumerWidget | Lista tarefas com **checkbox** para concluir/reabrir (recalcula o progresso do objectivo ligado); mostra o objectivo no subtítulo; toque = editar, toque longo = eliminar |
+| `tasks_screen.dart` | ConsumerStateful | Tarefas em **cartões** (cor por prioridade), **agrupadas** por Atrasadas / Hoje / Esta semana / Depois / Sem data + Concluídas. **Checkbox** para concluir/reabrir (recalcula o objectivo ligado); chip de prioridade, texto de vencimento, objectivo. **Seleção múltipla** (concluir/eliminar em lote), painel de **filtros** (prioridade, objectivo, mostrar concluídas), swipe para eliminar |
 | `add_task_screen.dart` | ConsumerStateful | Formulário criar/editar tarefa: título, descrição, prioridade, **objectivo (opcional)**, **concluída**, data. Ao guardar recalcula o progresso do objectivo novo e do antigo |
-| `finance_screen.dart` | ConsumerStateful | Saldo + lista filtrável (tipo, categoria, mês, ano) + botão de push para Supabase com feedback de sucesso/erro |
-| `add_transaction_screen.dart` | ConsumerStateful | Formulário nova transação (receita/despesa) |
+| `finance_screen.dart` | ConsumerStateful | Saldo + **banner** de orçamentos ultrapassados + secção **"Gastos deste mês"** (barras por categoria) + lista filtrável (tipo, categoria, mês, ano). Toque numa transação = editar; swipe = eliminar. Menu → Orçamentos / Relatórios. Botão de push para Supabase com feedback |
+| `add_transaction_screen.dart` | ConsumerStateful | Formulário **criar E editar** transação (recebe `tx?`) |
+| `budgets_screen.dart` | ConsumerWidget | Orçamentos mensais por categoria: definir/editar/eliminar limite, barra de progresso do gasto do mês, marca de ultrapassado |
 | `stats_screen.dart` | ConsumerWidget | Gráfico de barras mensal + progresso dos objectivos + botão de pull do Supabase |
 | `settings_screen.dart` | ConsumerWidget | Tema, moeda, backup/restauro JSON (com confirmação), interruptor de notificações |
 
@@ -153,8 +164,12 @@ Sempre que mudares colunas:
 | `goal_providers.dart` | `goalsProvider` (activos), `archivedGoalsProvider`, `addGoalProvider`, `updateGoalProvider`, `deleteGoalProvider` | CRUD de objectivos |
 | `goal_selection_provider.dart` | `goalSelectionProvider` (`Set<int>`) | Ids selecionados no modo de seleção múltipla (vazio = desligado) |
 | `task_providers.dart` | `tasksProvider` (stream), `addTaskProvider`, `updateTaskProvider`, `deleteTaskProvider`, `tasksByGoalProvider` | CRUD de tarefas |
-| `transaction_providers.dart` | `transactionsProvider`, `addTransactionProvider`, `deleteTransactionProvider`, `balanceProvider`, `filteredTransactionsProvider` | CRUD + saldo + lista filtrada |
-| `filter_providers.dart` | `financeFilterProvider` (`StateNotifier`) | Estado dos filtros: `type`, `category`, `month`, `year`, `reset()` |
+| `transaction_providers.dart` | `transactionsProvider`, `addTransactionProvider`, `updateTransactionProvider`, `deleteTransactionProvider`, `balanceProvider`, `filteredTransactionsProvider`, `currentMonthExpensesByCategoryProvider` | CRUD + saldo + lista filtrada + gastos do mês |
+| `filter_providers.dart` | `financeFilterProvider` (`StateNotifier`) | Filtros da Carteira: `type`, `category`, `month`, `year` |
+| `budget_providers.dart` | `budgetsProvider`, `upsertBudgetProvider`, `deleteBudgetProvider`, `budgetStatusProvider`, `overBudgetCountProvider` | Orçamentos + estado (gasto vs limite) do mês corrente |
+| `task_filter_provider.dart` | `taskFilterProvider` | Filtros das Tarefas: prioridade, objectivo, mostrar concluídas |
+| `task_selection_provider.dart` | `taskSelectionProvider` (`Set<int>`) | Seleção múltipla de tarefas |
+| `report_providers.dart` | `reportsProvider` | Stream do histórico de relatórios |
 | `settings_providers.dart` | `settingsProvider` (`StateNotifier`) | `themeMode`, `currency`, `notificationsEnabled`, persistidos em `SharedPreferences` |
 | `stats_providers.dart` | `monthlyStatsProvider`, `goalsProgressProvider` | Agregação `ano-mês → {receitas, despesas}` e progresso |
 
@@ -176,6 +191,7 @@ Sempre que mudares colunas:
 | `report_service.dart` | `MonthlyReport` (objectivos concluídos no mês + activos), gera os meses em falta no arranque, retenção de 1 ano |
 | `report_pdf.dart` | Exporta um `MonthlyReport` para PDF (via `printing`) |
 | `reminder_service.dart` | `checkAndNotify(ref)` — verificação **ao abrir a app**: respeita `notificationsEnabled`; notifica tarefas a vencer hoje/amanhã e objectivos <50% com data-alvo em ≤7 dias. Complementa (não substitui) os lembretes agendados |
+| `task_reminder_service.dart` | Agenda por tarefa com data: aviso na **véspera (18h)** e no **dia (9h)**. `rescheduleForTask` / `rescheduleAll` / `cancelForTask`. Faixa de ids `500000 + taskId*10` |
 | `sms_service.dart` | Pede permissão SMS, escuta mensagens recebidas, passa por `SmsParser` e grava a transação (`await ... .future`) |
 | `sms_parser.dart` | Regras regex para **M-Pesa** e **BIM**: extrai `amount`, `type` (receita/despesa), `reference` |
 | `backup_service.dart` | `exportToJson` / `importFromJson` para `pulso_backup.json` nos documentos da app; importação dentro de transação; devolve `BackupResult` |
@@ -268,6 +284,10 @@ flutter build apk --release
 | `637404a` | 2026-09 | **Identidade visual** (wordmark Familjen, fonte Hanken, paleta `#2F6BED`, splash animado) + **frontend dos Objectivos** (cartões, agrupamento por prazo, ponto de prazo) |
 | `a5210b3` | 2026-09 | **Seleção múltipla** de objectivos para eliminar em lote |
 | `43ba960` | 2026-09 | **Progresso automático** dos objectivos a partir das tarefas ligadas. Ver §12 |
+| `3387ecf` | 2026-09 | Actualização da documentação |
+| *(local)* | 2026-09 | **Ícone da app** + `flutter_native_splash` (sem flash branco) |
+| *(local)* | 2026-09 | **Módulo Tarefas** — cartões, agrupamento, notificações agendadas (`task_reminder_service`), seleção múltipla, filtros |
+| *(local)* | 2026-09 | **Módulo Carteira** — editar transações, gráfico de gastos, **orçamentos** por categoria (schema v4), **relatório financeiro** mensal + PDF |
 
 ---
 
@@ -343,28 +363,38 @@ intervalo `[base, base+99]`.
 - A lista principal (`goalsProvider`) só mostra activos; os arquivados estão em
   **Objectivos → menu → Objectivos arquivados**.
 
-### Relatórios mensais (só Objectivos, por agora)
+### Relatórios mensais (Objectivos + Financeiro)
 
-- **Conteúdo:** objectivos concluídos nesse mês + objectivos activos com
-  progresso (no momento da geração) + contagens e progresso médio.
-- **Geração:** `ReportService.ensureMonthlyReports()` no arranque gera todos os
-  meses em falta, do mês do objectivo mais antigo até ao **mês anterior**
-  (nunca o mês corrente). Um mês sem actividade não gera relatório.
-- **Histórico:** tabela `Reports` (local). Ecrã em
-  **Objectivos → menu → Relatórios mensais**.
-- **PDF:** `ReportPdf.open()` gera e abre o diálogo do sistema
-  (ver / imprimir / partilhar). Layout: cabeçalho, cartões de resumo, tabela de
-  concluídos, barras de progresso dos activos.
+- **Objectivos** (`MonthlyReport`): concluídos nesse mês + activos com
+  progresso + contagens e progresso médio.
+- **Financeiro** (`FinancialReport`): receitas, despesas, saldo, nº de
+  transações e despesas por categoria.
+- **Geração:** `ReportService.ensureMonthlyReports()` no arranque gera **os dois
+  tipos** para cada mês em falta, do primeiro mês com actividade (objectivos ou
+  transações) até ao **mês anterior**. Um mês sem actividade nesse domínio não
+  gera esse relatório. Dedup por `mês|tipo`.
+- **Histórico:** tabela `Reports` (local). Ecrã em **Objectivos → menu** ou
+  **Carteira → menu → Relatórios mensais**; cada linha traz um ícone do tipo.
+- **PDF:** `ReportPdf.open()` / `ReportPdf.openFinancial()` abrem o diálogo do
+  sistema (ver / imprimir / partilhar).
 - **Retenção:** relatórios com mais de 12 meses. No arranque, se existirem, a
   app **pergunta** antes de apagar (`_perguntarRetencao` no `HomeScreen`).
-- **Plataforma:** `printing` (exportar PDF) só funciona a sério em Android; no
-  desktop o diálogo pode não abrir.
+- **Plataforma:** `printing` (exportar PDF) só funciona a sério em Android.
+
+### Orçamentos (Carteira)
+
+- `Budgets`: um limite mensal por categoria de despesa.
+- `budgetStatusProvider` cruza os orçamentos com as despesas do **mês corrente**
+  (`currentMonthExpensesByCategoryProvider`) → gasto, %, ultrapassado.
+- `finance_screen` mostra um **banner** quando há orçamentos ultrapassados
+  (`overBudgetCountProvider`) e a secção "Gastos deste mês".
 
 ### Evolução
 
-- Adicionar relatório **financeiro** e de **tarefas** (mesma tabela `Reports`,
-  novos campos no `dataJson`).
-- Gráficos mais ricos no PDF (evolução do progresso ao longo do mês).
+- Relatório de **tarefas** (mesma tabela `Reports`).
+- Ler **notificações** de apps bancárias além de SMS (precisa de um
+  `NotificationListenerService` no Android — plugin dedicado).
+- Gráficos mais ricos no PDF.
 
 ---
 

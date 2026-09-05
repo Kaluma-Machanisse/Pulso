@@ -246,3 +246,54 @@ Sem tarefas ligadas, o slider manual mantém-se. Não houve alteração de schem
 ## Verificação
 
 - `dart analyze lib` → **No issues found**.
+
+---
+
+# Módulos completos: identidade, Tarefas, Carteira — Setembro 2026
+
+## Ícone + arranque nativo
+
+- `assets/icon/` — símbolo Pulso (linha de batimento azul sobre tinta), gerado
+  por `test/gen_icons_test.dart` (render `dart:ui` → PNG).
+- `flutter_launcher_icons` gera ícones Android (mipmap + adaptive) e iOS.
+- `flutter_native_splash` — fundo `#F7F8FA` / `#0F1115`, elimina o flash branco
+  antes do Flutter carregar. Regenerar: `dart run flutter_native_splash:create`.
+
+## Módulo Tarefas
+
+- `tasks_screen` refeito: cartões com cor por prioridade, checkbox, chip,
+  vencimento e objectivo ligado; **agrupado** por Atrasadas / Hoje / Esta
+  semana / Depois / Sem data + Concluídas.
+- **Seleção múltipla** (`task_selection_provider`): concluir ou eliminar em lote.
+- **Filtros** (`task_filter_provider`): prioridade, objectivo, mostrar concluídas.
+- **Notificações agendadas** (`task_reminder_service`): véspera às 18h e dia às
+  9h; canceladas ao concluir/eliminar; `rescheduleAll` no arranque e ao guardar.
+
+## Módulo Carteira
+
+Base de dados **v3 → v4**: nova tabela `Budgets`; `Reports.type`
+(`objectivos` | `financeiro`).
+
+- **Editar transações**: `add_transaction_screen` passa a criar e editar
+  (`updateTransactionProvider`). `finance_screen`: toque = editar, swipe =
+  eliminar, mostra a origem (M-Pesa/BIM/SMS).
+- **Gráfico no ecrã**: secção "Gastos deste mês" (barras por categoria,
+  `currentMonthExpensesByCategoryProvider`).
+- **Orçamentos** (`budgets_screen`, `budget_providers`): limite mensal por
+  categoria, barra de progresso do gasto do mês, marca de ultrapassado; banner
+  na Carteira quando algum é ultrapassado.
+- **Relatório financeiro** (`FinancialReport`): receitas/despesas/saldo/por
+  categoria. `ensureMonthlyReports` gera objectivos **e** financeiro por mês.
+  `reports_screen` e `report_detail_screen` distinguem os tipos; `report_pdf`
+  ganhou o layout financeiro. Acesso pelo menu da Carteira e dos Objectivos.
+
+## Ainda por fazer
+
+- Ler **notificações** de apps bancárias além de SMS (Android
+  `NotificationListenerService`, plugin dedicado).
+- Relatório mensal de **tarefas**.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK; migração v3→v4 testada a correr no Linux.
