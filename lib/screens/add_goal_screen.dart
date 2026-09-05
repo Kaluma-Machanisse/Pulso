@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
 import '../database/database.dart';
 import '../providers/goal_providers.dart';
+import '../providers/task_providers.dart';
 import '../services/goal_reminder_service.dart';
 import '../services/goal_archive_service.dart';
+import '../services/goal_progress_service.dart';
 
 class AddGoalScreen extends ConsumerStatefulWidget {
   final Goal? goal;
@@ -65,8 +67,16 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
     super.dispose();
   }
 
+  /// Tarefas ligadas a este objectivo (só faz sentido em edição).
+  List<Task> get _linkedTasks {
+    final id = widget.goal?.id;
+    if (id == null) return const [];
+    return ref.read(tasksByGoalProvider(id)).valueOrNull ?? const [];
+  }
+
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
+      final autoProgresso = _linkedTasks.isNotEmpty;
       if (widget.goal == null) {
         // Criação – campos não‑nullable passam directo, nullable usam Value
         final newGoal = GoalsCompanion.insert(
@@ -92,20 +102,83 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
           ),
           category: _category,
           targetDate: Value<DateTime?>(_targetDate),
-          progressPercentage: _progress,
+          // Com tarefas ligadas o progresso é automático — não se sobrepõe.
+          progressPercentage: autoProgresso ? widget.goal!.progressPercentage : _progress,
           importance: _importance,
           term: _term,
         );
         await ref.read(updateGoalProvider(updatedGoal).future);
       }
 
-      // Arquiva se chegou a 100% (ou desarquiva se voltou atrás) e
-      // reagenda os lembretes com base no estado actualizado da BD.
+      // Recalcula o progresso a partir das tarefas (se houver), arquiva se
+      // chegou a 100% e reagenda os lembretes.
+      if (autoProgresso) {
+        await GoalProgressService.recompute(ref, widget.goal!.id);
+      }
       await GoalArchiveService.sweep(ref);
       await GoalReminderService.rescheduleAll(ref);
 
       if (mounted) Navigator.of(context).pop();
     }
+  }
+
+  Widget _buildProgresso() {
+    final id = widget.goal?.id;
+    final tasks = id == null
+        ? const <Task>[]
+        : (ref.watch(tasksByGoalProvider(id)).valueOrNull ?? const <Task>[]);
+
+    // Com tarefas ligadas → progresso automático (slider escondido).
+    if (tasks.isNotEmpty) {
+      final done = tasks.where((t) => t.isCompleted).length;
+      final pct = (done / tasks.length * 100).round();
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.link, size: 18),
+                const SizedBox(width: 8),
+                Text('Progresso automático: $pct%',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text('$done de ${tasks.length} tarefas concluídas',
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(value: pct / 100, minHeight: 8),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Sem tarefas → progresso manual.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Progresso: $_progress%'),
+        Slider(
+          value: _progress.toDouble(),
+          min: 0,
+          max: 100,
+          divisions: 10,
+          label: '$_progress%',
+          onChanged: (val) => setState(() => _progress = val.round()),
+        ),
+      ],
+    );
   }
 
   @override
@@ -179,15 +252,7 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
               },
             ),
             const SizedBox(height: 16),
-            Text('Progresso: $_progress%'),
-            Slider(
-              value: _progress.toDouble(),
-              min: 0,
-              max: 100,
-              divisions: 10,
-              label: '$_progress%',
-              onChanged: (val) => setState(() => _progress = val.round()),
-            ),
+            _buildProgresso(),
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: _save,

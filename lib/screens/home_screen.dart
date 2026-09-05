@@ -6,6 +6,7 @@ import '../services/sms_service.dart';
 import '../services/reminder_service.dart';
 import '../services/goal_reminder_service.dart';
 import '../services/goal_archive_service.dart';
+import '../services/goal_progress_service.dart';
 import '../services/report_service.dart';
 import '../providers/database_provider.dart';
 import 'goals_screen.dart';
@@ -43,6 +44,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
       await ReminderService.checkAndNotify(ref);
 
+      // Progresso dos objectivos com tarefas ligadas = % de tarefas concluídas.
+      await GoalProgressService.recomputeAll(ref);
       // Objectivos a 100% são arquivados (não apagados).
       await GoalArchiveService.sweep(ref);
       // Mantém os lembretes agendados alinhados com o estado actual da BD.

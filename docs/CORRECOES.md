@@ -218,3 +218,31 @@ Ronda de correcções de bugs, segurança e robustez. Nada aqui muda o
 
 - `dart analyze lib` → **No issues found**.
 - Testado a correr no Linux desktop (fontes carregam, tema aplica).
+
+---
+
+# Objectivos ↔ Tarefas: progresso automático — Setembro 2026
+
+Quando um objectivo tem tarefas ligadas, o progresso deixa de ser manual:
+
+    progresso = tarefas concluídas ÷ tarefas totais do objectivo  (arredondado)
+
+Sem tarefas ligadas, o slider manual mantém-se. Não houve alteração de schema
+(`Tasks.goalId` já existia).
+
+- **Novo** `goal_progress_service.dart`: `recompute(ref, goalId)` recalcula o
+  progresso, arquiva a 100% (ou desarquiva) e reagenda os lembretes;
+  `recomputeAll(ref)` no arranque.
+- `add_task_screen.dart`: dropdown **Objectivo (opcional)** + interruptor
+  **Concluída**; ao guardar recalcula o objectivo novo e o antigo (se mudou).
+- `tasks_screen.dart`: **checkbox** para concluir/reabrir a tarefa (recalcula o
+  objectivo na hora), nome do objectivo no subtítulo, título riscado quando
+  concluída.
+- `add_goal_screen.dart`: com tarefas ligadas o slider dá lugar a um cartão
+  "Progresso automático: X% — N de M tarefas"; o slider manual só aparece sem
+  tarefas.
+- `home_screen.dart`: `recomputeAll` no arranque para manter tudo sincronizado.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
