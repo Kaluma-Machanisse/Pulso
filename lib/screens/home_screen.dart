@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io' show Platform;
 import '../services/sms_service.dart';
 import '../services/reminder_service.dart';
+import '../services/goal_reminder_service.dart';
 import 'goals_screen.dart';
 import 'tasks_screen.dart';
 import 'finance_screen.dart';
@@ -30,8 +33,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await SmsService.initialize(ref);
+      // A leitura de SMS só existe no Android (o plugin `telephony` e o
+      // `permission_handler` não têm implementação para desktop/web).
+      if (!kIsWeb && Platform.isAndroid) {
+        await SmsService.initialize(ref);
+      }
       await ReminderService.checkAndNotify(ref);
+      // Mantém os lembretes agendados alinhados com o estado actual da BD.
+      await GoalReminderService.rescheduleAll(ref);
     });
   }
 

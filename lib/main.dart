@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
-//import 'services/auth_service.dart';
 import 'services/notification_service.dart';
-import 'providers/settings_providers.dart';   // <-- novo import
+import 'providers/settings_providers.dart';
 import 'screens/splash_screen.dart';
-//import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,25 +19,27 @@ void main() async {
   runApp(const ProviderScope(child: PulsoApp()));
 }
 
-// Muda de StatelessWidget para ConsumerWidget
 class PulsoApp extends ConsumerWidget {
   const PulsoApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Lê as configurações de tema
     final settings = ref.watch(settingsProvider);
 
     return MaterialApp(
       title: 'Pulso',
-      themeMode: settings.themeMode,     // aplica o tema escolhido
+      debugShowCheckedModeBanner: false,
+      themeMode: settings.themeMode,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        brightness: Brightness.light,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
       ),
       darkTheme: ThemeData(
-        primarySwatch: Colors.blue,
-        brightness: Brightness.dark,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
       ),
       home: const SplashScreen(),
     );

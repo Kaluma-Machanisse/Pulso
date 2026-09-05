@@ -27,23 +27,27 @@ class SmsService {
     }
   }
 
-  static void _processSms(SmsMessage message, WidgetRef ref) {
+  static Future<void> _processSms(SmsMessage message, WidgetRef ref) async {
     final smsBody = message.body ?? '';
     final sender = message.address ?? 'Desconhecido';
 
     final transaction = SmsParser.parse(smsBody, sender);
-    if (transaction != null) {
-      final txCompanion = TransactionsCompanion(
-        amount: Value(transaction.amount),
-        type: Value(transaction.type),
-        category: const Value('SMS'),
-        description: Value(transaction.description ?? 'Transação via SMS'),
-        date: Value(DateTime.now()),
-        source: Value(transaction.source),
-        smsId: const Value.absent(),
-      );
+    if (transaction == null) return;
 
-      ref.read(addTransactionProvider(txCompanion));
-    }
+    final txCompanion = TransactionsCompanion(
+      amount: Value(transaction.amount),
+      type: Value(transaction.type),
+      category: const Value('SMS'),
+      description: Value(transaction.description ?? 'Transação via SMS'),
+      date: Value(DateTime.now()),
+      source: Value(transaction.source),
+      smsId: transaction.reference != null
+          ? Value(transaction.reference!)
+          : const Value.absent(),
+    );
+
+    // `.future` é obrigatório: sem isto o FutureProvider.family nunca corre
+    // e a transação não é gravada.
+    await ref.read(addTransactionProvider(txCompanion).future);
   }
 }

@@ -1,10 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 //import '../database/database.dart';
 import '../providers/database_provider.dart';  // <-- adicionado
+import '../providers/settings_providers.dart';
 import 'notification_service.dart';
 
 class ReminderService {
   static Future<void> checkAndNotify(WidgetRef ref) async {
+    // Respeita o interruptor de notificações das Configurações.
+    if (!ref.read(settingsProvider).notificationsEnabled) return;
+
     final db = ref.read(databaseProvider);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

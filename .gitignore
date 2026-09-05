@@ -23,9 +23,20 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
-# Credenciais privadas
+# Credenciais privadas (usar os ficheiros *.example.dart como modelo)
 lib/config/auth_config.dart
 lib/config/supabase_config.dart
+
+# Arquivos comprimidos / backups locais
+*.zip
+pulso_backup.json
+
+# Artefactos de build do Android
+/android/build/
+/android/.gradle/
+
+# Ferramentas locais de desenvolvimento
+.claude/
 
 
 # Flutter/Dart/Pub related

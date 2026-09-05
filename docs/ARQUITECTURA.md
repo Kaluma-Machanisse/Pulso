@@ -1,0 +1,301 @@
+# Pulso — Arquitectura e construção da app
+
+App pessoal de **lembretes, objectivos e educação financeira**, pensada para
+o contexto moçambicano (Metical, M-Pesa, BIM). Flutter + Drift (SQLite local)
+com sincronização opcional para Supabase.
+
+- **Plataformas alvo:** Android (principal), com projectos iOS/Linux/macOS/Windows/Web gerados.
+- **Versão:** `1.0.0+1` (`pubspec.yaml`)
+- **SDK:** Dart `>=3.8.0 <4.0.0`, Flutter stable 3.44+
+
+---
+
+## 1. Stack
+
+| Camada | Tecnologia | Porquê |
+|---|---|---|
+| UI | Flutter Material 3 | `ColorScheme.fromSeed(Colors.blue)`, tema claro/escuro/sistema |
+| Estado | `flutter_riverpod` ^2.6 | Providers reactivos, `StreamProvider` sobre a BD |
+| BD local | `drift` ^2.26 + `sqlite3_flutter_libs` | Fonte de verdade offline, streams reactivas |
+| Nuvem | `supabase_flutter` ^2.12 | Auth + tabelas espelho (`goals`, `tasks`, `transactions`) |
+| Preferências | `shared_preferences` | Tema, moeda, interruptor de notificações |
+| Notificações | `flutter_local_notifications` ^18 + `timezone` | Lembretes locais |
+| SMS | `telephony` ^0.2 + `permission_handler` ^12 | Ler SMS de M-Pesa/BIM e criar transações |
+| Gráficos | `fl_chart` ^1.2 | Barras receitas/despesas |
+
+---
+
+## 2. Estrutura de pastas (`lib/`)
+
+```
+lib/
+├─ main.dart                  Bootstrap: Supabase.initialize + Notificações + ProviderScope
+├─ config/
+│  ├─ auth_config.dart          (GITIGNORED) credenciais do utilizador de serviço
+│  ├─ supabase_config.dart      (GITIGNORED) URL + anon key
+│  └─ *.example.dart            Modelos versionados
+├─ database/
+│  ├─ database.dart             Tabelas Drift + AppDatabase + MigrationStrategy
+│  └─ database.g.dart           GERADO por build_runner (não editar à mão)
+├─ providers/                 Camada Riverpod (ver §5)
+├─ services/                  Lógica sem UI (ver §6 e §10)
+├─ screens/                   Ecrãs (ver §4)
+└─ widgets/
+   └─ confirm_dialog.dart      Diálogo genérico de confirmação de eliminação
+```
+
+---
+
+## 3. Modelo de dados (`lib/database/database.dart`)
+
+`schemaVersion = 2`. Três tabelas, todas com `id` autoincrement e `createdAt`.
+
+### Goals (Objectivos)
+| Campo | Tipo | Notas |
+|---|---|---|
+| title | text | obrigatório |
+| description | text? | |
+| targetDate | dateTime? | data alvo |
+| category | text | default `Geral` (Saúde, Financeiro, Carreira, Pessoal) |
+| progressPercentage | int | 0–100 |
+| isCompleted | bool | default `false` |
+| importance | text | **v2** — `Baixa`/`Média`/`Alta`/`Crítica`; define a frequência de lembretes (1/2/3/4 por semana). Default `Média` |
+| term | text | **v2** — `Curto prazo`/`Longo prazo`; organização/filtro. Default `Curto prazo` |
+
+### Tasks (Tarefas)
+| Campo | Tipo | Notas |
+|---|---|---|
+| title | text | obrigatório |
+| description | text? | |
+| dueDate | dateTime? | vencimento |
+| priority | text | default `Média` (Alta / Média / Baixa) |
+| isCompleted | bool | default `false` |
+| goalId | int? | referência a `Goals.id` (ver limitação em §7) |
+
+### Transactions (Transações)
+| Campo | Tipo | Notas |
+|---|---|---|
+| amount | real | **valor sempre positivo**; o sinal é dado por `type` |
+| type | text | `receita` ou `despesa` |
+| category | text | default `Geral` |
+| description | text? | |
+| date | dateTime | data da transação |
+| source | text | `manual`, `M-Pesa`, `BIM`, … |
+| smsId | text? | referência da SMS original (evita duplicados no futuro) |
+| goalId | int? | referência opcional a um objectivo |
+
+> **Convenção de sinais:** `amount` guarda sempre um número positivo.
+> `balanceProvider` soma quando `type == 'receita'` e subtrai quando `despesa`.
+> Não guardar valores negativos na coluna.
+
+### Migrações
+
+`MigrationStrategy` está definida com `onCreate`/`onUpgrade`.
+
+- **v1 → v2:** `onUpgrade` faz `m.addColumn(goals, goals.importance)` e
+  `m.addColumn(goals, goals.term)`. Os objectivos existentes ficam com os
+  valores por omissão. Sem perda de dados.
+- Se sincronizares com o Supabase, a tabela `goals` remota também precisa das
+  colunas — ver `docs/supabase_migracao_v2.sql`.
+
+Sempre que mudares colunas:
+
+1. Incrementa `schemaVersion`.
+2. Adiciona os passos em `onUpgrade` (`m.addColumn(...)`, etc.).
+3. Regenera o código: `dart run build_runner build --delete-conflicting-outputs`.
+
+`PRAGMA foreign_keys` está **desligado de propósito** (ver §7).
+
+---
+
+## 4. Ecrãs (`lib/screens/`)
+
+| Ecrã | Tipo | Função |
+|---|---|---|
+| `splash_screen.dart` | Stateful | Delay 500ms → `AuthService.signIn()` → `HomeScreen` |
+| `home_screen.dart` | ConsumerStateful | `BottomNavigationBar` com 5 abas; no arranque chama `SmsService.initialize` + `ReminderService.checkAndNotify` |
+| `goals_screen.dart` | ConsumerWidget | Lista objectivos; toque = editar, toque longo = eliminar (com confirmação) |
+| `add_goal_screen.dart` | ConsumerStateful | Formulário criar/editar objectivo (título, descrição, categoria, data, slider de progresso) |
+| `tasks_screen.dart` | ConsumerWidget | Lista tarefas; toque = editar, toque longo = eliminar (com confirmação) |
+| `add_task_screen.dart` | ConsumerStateful | Formulário criar/editar tarefa |
+| `finance_screen.dart` | ConsumerStateful | Saldo + lista filtrável (tipo, categoria, mês, ano) + botão de push para Supabase com feedback de sucesso/erro |
+| `add_transaction_screen.dart` | ConsumerStateful | Formulário nova transação (receita/despesa) |
+| `stats_screen.dart` | ConsumerWidget | Gráfico de barras mensal + progresso dos objectivos + botão de pull do Supabase |
+| `settings_screen.dart` | ConsumerWidget | Tema, moeda, backup/restauro JSON (com confirmação), interruptor de notificações |
+
+---
+
+## 5. Providers (`lib/providers/`)
+
+| Ficheiro | Providers | Papel |
+|---|---|---|
+| `database_provider.dart` | `databaseProvider` | Instância única de `AppDatabase` |
+| `goal_providers.dart` | `goalsProvider` (stream), `addGoalProvider`, `updateGoalProvider`, `deleteGoalProvider` | CRUD de objectivos |
+| `task_providers.dart` | `tasksProvider` (stream), `addTaskProvider`, `updateTaskProvider`, `deleteTaskProvider`, `tasksByGoalProvider` | CRUD de tarefas |
+| `transaction_providers.dart` | `transactionsProvider`, `addTransactionProvider`, `deleteTransactionProvider`, `balanceProvider`, `filteredTransactionsProvider` | CRUD + saldo + lista filtrada |
+| `filter_providers.dart` | `financeFilterProvider` (`StateNotifier`) | Estado dos filtros: `type`, `category`, `month`, `year`, `reset()` |
+| `settings_providers.dart` | `settingsProvider` (`StateNotifier`) | `themeMode`, `currency`, `notificationsEnabled`, persistidos em `SharedPreferences` |
+| `stats_providers.dart` | `monthlyStatsProvider`, `goalsProgressProvider` | Agregação `ano-mês → {receitas, despesas}` e progresso |
+
+> **Regra Riverpod:** um `FutureProvider.family` só executa quando é
+> observado. Ao disparar mutações (add/update/delete) usar sempre
+> `await ref.read(provider(arg).future)`.
+
+---
+
+## 6. Serviços (`lib/services/`)
+
+| Serviço | Responsabilidade |
+|---|---|
+| `auth_service.dart` | `signIn()` — login silencioso com credenciais fixas; reusa a sessão se ainda válida |
+| `notification_service.dart` | `initialize()` — canal Android + fuso horário (`Africa/Maputo`); `showNotification()` imediata; `scheduleAt()` agenda uma única no futuro (`zonedSchedule`, modo inexacto); `cancel()`/`cancelRange()` |
+| `goal_reminder_service.dart` | Agenda os lembretes de cada objectivo conforme a **importância** (1–4/semana) + 1 no dia da data-alvo; janela de 90 dias; `rescheduleForGoal`, `rescheduleAll` (arranque), `cancelForGoal` (ao eliminar). Ver §11 |
+| `reminder_service.dart` | `checkAndNotify(ref)` — verificação **ao abrir a app**: respeita `notificationsEnabled`; notifica tarefas a vencer hoje/amanhã e objectivos <50% com data-alvo em ≤7 dias. Complementa (não substitui) os lembretes agendados |
+| `sms_service.dart` | Pede permissão SMS, escuta mensagens recebidas, passa por `SmsParser` e grava a transação (`await ... .future`) |
+| `sms_parser.dart` | Regras regex para **M-Pesa** e **BIM**: extrai `amount`, `type` (receita/despesa), `reference` |
+| `backup_service.dart` | `exportToJson` / `importFromJson` para `pulso_backup.json` nos documentos da app; importação dentro de transação; devolve `BackupResult` |
+| `sync_service.dart` | Sincronização **mirror** com Supabase (ver §7); todos os métodos devolvem `bool` |
+
+---
+
+## 7. Sincronização — estado actual e evolução
+
+### Como funciona hoje (estratégia "mirror", app de utilizador único)
+
+- **Push** (`SyncService.pushAll`): para cada tabela, apaga tudo no Supabase e
+  reinsere as linhas locais **num único `insert` em lote**.
+- **Pull** (`SyncService.pullAll`): busca as linhas remotas para memória e só
+  depois, **dentro de uma `db.transaction`**, apaga o local e reinsere.
+- Qualquer falha é apanhada, registada com `debugPrint` e devolvida como
+  `false` — o ecrã mostra "Falha na sincronização".
+
+### Limitações conhecidas
+
+1. **Sem chave estável.** Local e remoto usam `id` autoincrement independentes.
+   Depois de um ciclo push/pull os `id` mudam, portanto **`goalId` em tarefas e
+   transações não sobrevive à sincronização**. Por isso o `PRAGMA foreign_keys`
+   está desligado — activá-lo faria o pull falhar em referências órfãs.
+2. **Mirror, não merge.** Não há resolução de conflitos: o último a
+   sincronizar ganha. Editar em dois dispositivos perde dados.
+3. **Sem filtro por utilizador na app.** Todos entram na mesma conta Supabase
+   (`AuthConfig`), logo partilham as mesmas linhas.
+
+### Plano de evolução (quando for preciso multi-dispositivo real)
+
+1. Adicionar coluna `uuid TEXT` (gerada no cliente, ex.: package `uuid`) às três
+   tabelas → `schemaVersion = 2` + migração + `build_runner`.
+2. `upsert(..., onConflict: 'uuid')` no push; casar por `uuid` no pull.
+3. Guardar `updatedAt` e sincronizar só o que mudou (incremental).
+4. Reativar `PRAGMA foreign_keys = ON` e mapear `goalId` por `uuid`.
+5. Ecrã de login real (email/password do próprio utilizador) + RLS por `auth.uid()`.
+
+---
+
+## 8. Build & execução
+
+```bash
+# 1. Criar os ficheiros de config a partir dos modelos
+cp lib/config/auth_config.example.dart     lib/config/auth_config.dart
+cp lib/config/supabase_config.example.dart lib/config/supabase_config.dart
+#    ... e preencher os valores (ou passar por --dart-define)
+
+# 2. Dependências
+flutter pub get
+
+# 3. Geração de código Drift (sempre que mudar database.dart)
+dart run build_runner build --delete-conflicting-outputs
+
+# 4. Correr
+flutter run                              # dispositivo/emulador ligado
+flutter run -d linux                     # desktop, útil para testar UI rápido
+
+# 5. Com segredos injectados em vez de ficheiro
+flutter run \
+  --dart-define=AUTH_EMAIL=... \
+  --dart-define=AUTH_PASSWORD=... \
+  --dart-define=SUPABASE_URL=... \
+  --dart-define=SUPABASE_ANON_KEY=...
+
+# 6. Verificações
+dart analyze
+flutter test
+
+# 7. APK release
+flutter build apk --release
+```
+
+---
+
+## 9. Histórico de fases (git)
+
+| Commit | Data | Fase |
+|---|---|---|
+| `c44150d` | 2026-05-26 | Initial commit |
+| `ee45f5c` | 2026-05-26 | Setup: tema, estrutura de pastas, dashboard base |
+| `737dd34` | 2026-05-31 | **Fase D** — sync Supabase + splash + início das Configurações |
+| `78a26eb` | 2026-05-31 | Remover credenciais do versionamento, atualizar `.gitignore` |
+| `1592edc` | 2026-05-31 | **Fase E** — Configurações completas (tema, moeda, backup, notificações) |
+| `b46f39f` | 2026-05-31 | **Fase G** — filtros de transações (tipo e categoria) |
+| `4b08838` | 2026-05-31 | Correcção de erros e avisos de depreciação |
+| *(local)* | 2026-09 | **Manutenção** — segurança, sync robusta, feedback de erros, confirmações, filtros mês/ano. Ver `docs/CORRECOES.md` |
+| *(local)* | 2026-09 | **Objectivos v1** — importância + prazo, lembretes agendados. Ver §11 e `docs/CORRECOES.md` |
+
+---
+
+## 10. Lembretes de objectivos (`goal_reminder_service.dart`)
+
+### Regras
+
+| Importância | Lembretes/semana | Dias (09:00 local) |
+|---|---|---|
+| Baixa | 1 | Qua |
+| Média | 2 | Ter, Sex |
+| Alta | 3 | Seg, Qua, Sex |
+| Crítica | 4 | Seg, Qua, Sex, Dom |
+
+- **+ 1 notificação garantida** no dia da data-alvo, qualquer que seja a importância.
+- Só há lembretes enquanto o objectivo **não está completo** e **tem data-alvo**.
+- Agenda-se apenas uma **janela de 90 dias**; objectivos de longo prazo são
+  reagendados sempre que a app abre (`rescheduleAll` no `HomeScreen.initState`).
+
+### Ciclo de vida
+
+| Evento | Acção |
+|---|---|
+| Criar/editar objectivo (`add_goal_screen`) | `GoalReminderService.rescheduleAll(ref)` |
+| Eliminar objectivo (`goals_screen`) | `GoalReminderService.cancelForGoal(id)` |
+| Abertura da app (`home_screen`) | `rescheduleAll(ref)` — realinha tudo com a BD |
+
+### Esquema de IDs de notificação
+
+`baseId(goalId) = 100000 + goalId * 100`. Slots `0..98` = lembretes
+periódicos; slot `99` = notificação da data-alvo. `cancelForGoal` limpa o
+intervalo `[base, base+99]`.
+
+### Plataforma
+
+- **Android:** usa `zonedSchedule` em modo **inexacto**
+  (`inexactAllowWhileIdle`) — não precisa da permissão `SCHEDULE_EXACT_ALARM`.
+  O `AndroidManifest.xml` declara `RECEIVE_BOOT_COMPLETED` e os receivers
+  `ScheduledNotificationReceiver` / `ScheduledNotificationBootReceiver` para as
+  notificações sobreviverem a reinícios.
+- **Linux/desktop/web:** `zonedSchedule` não existe → `scheduleAt` apanha o
+  erro e ignora. A app funciona, apenas sem lembretes agendados.
+- Fuso horário fixado em `Africa/Maputo` (CAT, UTC+2, sem horário de verão).
+
+### Limitações
+
+- O texto do lembrete traz o progresso do **momento em que foi agendado** —
+  não é actualizado. `rescheduleAll` no arranque corrige isto na prática.
+- Sem detecção automática de fuso: se o telemóvel estiver noutro fuso, as
+  09:00 são as de Maputo.
+
+---
+
+## 11. Convenções
+
+- Idioma: **português europeu** em UI, comentários e nomes de domínio (`objectivo`, `receita`).
+- Código gerado (`*.g.dart`) nunca é editado à mão.
+- Mutações de BD passam sempre por um provider Riverpod, nunca por `AppDatabase` directo na UI.
+- Toda a acção destrutiva (eliminar, restaurar backup) pede confirmação.
+- Ficheiros em `config/` com segredos reais **nunca** são versionados.

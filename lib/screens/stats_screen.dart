@@ -20,10 +20,15 @@ class StatsScreen extends ConsumerWidget {
             icon: const Icon(Icons.cloud_download),
             tooltip: 'Restaurar dados do Supabase',
             onPressed: () async {
-              await SyncService.pullAll(ref);
+              final ok = await SyncService.pullAll(ref);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Dados restaurados')),
+                  SnackBar(
+                    content: Text(ok
+                        ? 'Dados restaurados'
+                        : 'Falha ao restaurar. Verifica a ligação.'),
+                    backgroundColor: ok ? null : Colors.red,
+                  ),
                 );
               }
             },
@@ -46,15 +51,21 @@ class StatsScreen extends ConsumerWidget {
                     return const Center(child: Text('Sem dados'));
                   }
                   final months = monthly.keys.toList()..sort();
+                  // As barras (receitas/despesas) são lado a lado, não
+                  // empilhadas: o topo do eixo é o maior valor individual,
+                  // com 10% de folga.
+                  final maiorValor = monthly.values.fold<double>(
+                    0.0,
+                    (prev, m) => [
+                      prev,
+                      m['receitas'] ?? 0,
+                      m['despesas'] ?? 0,
+                    ].reduce((a, b) => a > b ? a : b),
+                  );
                   return BarChart(
                     BarChartData(
                       alignment: BarChartAlignment.spaceAround,
-                      maxY: monthly.values.fold<double>(
-                        0.0,
-                        (prev, m) => (m['receitas']! + m['despesas']!)
-                            .clamp(prev, double.infinity)
-                            .toDouble(),
-                      ),
+                      maxY: maiorValor == 0 ? 1 : maiorValor * 1.1,
                       barGroups: List.generate(months.length, (i) {
                         final data = monthly[months[i]]!;
                         return BarChartGroupData(

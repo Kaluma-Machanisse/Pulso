@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart';                // <-- adiciona esta linha
 import '../providers/goal_providers.dart';
-import '../database/database.dart';
+import '../services/goal_reminder_service.dart';
+import '../widgets/confirm_dialog.dart';
+import 'add_goal_screen.dart';
 
 class GoalsScreen extends ConsumerWidget {
   const GoalsScreen({super.key});
@@ -20,12 +21,25 @@ class GoalsScreen extends ConsumerWidget {
             final goal = goals[i];
             return ListTile(
               title: Text(goal.title),
-              subtitle: Text('${goal.progressPercentage}% - ${goal.category}'),
+              subtitle: Text(
+                '${goal.progressPercentage}% · ${goal.category} · ${goal.importance} · ${goal.term}',
+              ),
               trailing: goal.isCompleted
                   ? const Icon(Icons.check, color: Colors.green)
                   : null,
-              onLongPress: () {
-                ref.read(deleteGoalProvider(goal.id));
+              onTap: () {
+                // Navegar para EDITAR o objectivo
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AddGoalScreen(goal: goal),
+                  ),
+                );
+              },
+              onLongPress: () async {
+                if (await confirmarEliminacao(context, goal.title)) {
+                  await ref.read(deleteGoalProvider(goal.id).future);
+                  await GoalReminderService.cancelForGoal(goal.id);
+                }
               },
             );
           },
@@ -35,12 +49,10 @@ class GoalsScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          final newGoal = GoalsCompanion.insert(
-            title: 'Novo objectivo ${DateTime.now().millisecond}',
-            category: const Value('Saúde'),
-            targetDate: Value(DateTime.now().add(const Duration(days: 30))),
+          // Navegar para CRIAR um novo objectivo (formulário vazio)
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AddGoalScreen()),
           );
-          ref.read(addGoalProvider(newGoal));
         },
         child: const Icon(Icons.add),
       ),

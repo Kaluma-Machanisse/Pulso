@@ -1,16 +1,40 @@
-# pulso
+# Pulso
 
-A new Flutter project.
+App pessoal de **lembretes, objectivos e educação financeira**, com foco no
+contexto moçambicano (Metical, leitura de SMS M-Pesa/BIM). Flutter + SQLite
+local (Drift) e sincronização opcional com Supabase.
 
-## Getting Started
+## Funcionalidades
 
-This project is a starting point for a Flutter application.
+- **Objectivos** com categoria, data-alvo e progresso.
+- **Tarefas** com prioridade e vencimento, opcionalmente ligadas a um objectivo.
+- **Carteira**: receitas/despesas, saldo, filtros por tipo, categoria, mês e ano.
+- **Leitura automática de SMS** de M-Pesa e BIM → cria transações.
+- **Estatísticas**: gráfico mensal receitas vs despesas + progresso dos objectivos.
+- **Lembretes locais** para tarefas a vencer e objectivos parados.
+- **Configurações**: tema (claro/escuro/sistema), moeda, backup JSON local.
+- **Sincronização** mirror com Supabase (push/pull manual).
 
-A few resources to get you started if this is your first Flutter project:
+## Arranque rápido
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+cp lib/config/auth_config.example.dart     lib/config/auth_config.dart
+cp lib/config/supabase_config.example.dart lib/config/supabase_config.dart
+# preencher os valores nos dois ficheiros (ou usar --dart-define)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter run
+```
+
+## Documentação
+
+- [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — stack, modelo de dados, ecrãs, providers, serviços, sincronização, build.
+- [`docs/SEGURANCA.md`](docs/SEGURANCA.md) — checklist de segurança e acções manuais pendentes.
+- [`docs/CORRECOES.md`](docs/CORRECOES.md) — registo da última ronda de correcções.
+
+## Estado
+
+Projecto pessoal em desenvolvimento. A sincronização actual assume **um único
+utilizador / uma conta Supabase partilhada** — ver limitações e plano de
+evolução em `docs/ARQUITECTURA.md` §7.

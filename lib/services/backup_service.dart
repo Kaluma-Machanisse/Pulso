@@ -6,8 +6,25 @@ import 'package:path_provider/path_provider.dart';
 import '../database/database.dart';
 import '../providers/database_provider.dart';
 
+/// Resultado de uma operação de backup, para o ecrã dar feedback preciso.
+enum BackupResult { sucesso, semFicheiro, erro }
+
 class BackupService {
-  static Future<void> exportToJson(WidgetRef ref) async {
+  /// Caminho do ficheiro de backup local.
+  static Future<File> _backupFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/pulso_backup.json');
+  }
+
+  static Future<BackupResult> exportToJson(WidgetRef ref) async {
+    try {
+      return await _exportToJson(ref);
+    } catch (e) {
+      return BackupResult.erro;
+    }
+  }
+
+  static Future<BackupResult> _exportToJson(WidgetRef ref) async {
     final db = ref.read(databaseProvider);
     final goals = await db.select(db.goals).get();
     final tasks = await db.select(db.tasks).get();
@@ -22,6 +39,8 @@ class BackupService {
                 'category': g.category,
                 'progress_percentage': g.progressPercentage,
                 'is_completed': g.isCompleted,
+                'importance': g.importance,
+                'term': g.term,
               })
           .toList(),
       'tasks': tasks
@@ -48,21 +67,31 @@ class BackupService {
     };
 
     final jsonString = const JsonEncoder.withIndent('  ').convert(data);
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/pulso_backup.json');
+    final file = await _backupFile();
     await file.writeAsString(jsonString);
+    return BackupResult.sucesso;
   }
 
-  static Future<void> importFromJson(WidgetRef ref) async {
-    final db = ref.read(databaseProvider);
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/pulso_backup.json');
+  static Future<BackupResult> importFromJson(WidgetRef ref) async {
+    try {
+      return await _importFromJson(ref);
+    } catch (e) {
+      return BackupResult.erro;
+    }
+  }
 
-    if (!await file.exists()) return;
+  static Future<BackupResult> _importFromJson(WidgetRef ref) async {
+    final db = ref.read(databaseProvider);
+    final file = await _backupFile();
+
+    if (!await file.exists()) return BackupResult.semFicheiro;
 
     final jsonString = await file.readAsString();
     final data = jsonDecode(jsonString) as Map<String, dynamic>;
 
+    // Tudo dentro de uma transação: se algo falhar a meio, nada é aplicado
+    // e os dados actuais mantêm-se intactos.
+    await db.transaction(() async {
     await db.delete(db.goals).go();
     await db.delete(db.tasks).go();
     await db.delete(db.transactions).go();
@@ -77,6 +106,8 @@ class BackupService {
         category: Value(g['category'] ?? 'Geral'),
         progressPercentage: Value(g['progress_percentage'] ?? 0),
         isCompleted: Value(g['is_completed'] ?? false),
+        importance: Value(g['importance'] ?? 'Média'),
+        term: Value(g['term'] ?? 'Curto prazo'),
       ));
     }
 
@@ -104,5 +135,8 @@ class BackupService {
         smsId: tx['sms_id'] != null ? Value(tx['sms_id']) : const Value.absent(),
       ));
     }
+    });
+
+    return BackupResult.sucesso;
   }
 }

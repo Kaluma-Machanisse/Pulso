@@ -16,6 +16,12 @@ class Goals extends Table {
   IntColumn get progressPercentage => integer().withDefault(const Constant(0))();
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  // v2 — controlam a frequência e organização dos lembretes.
+  // importance: 'Baixa' | 'Média' | 'Alta' | 'Crítica'  (nº de lembretes/semana)
+  TextColumn get importance => text().withDefault(const Constant('Média'))();
+  // term: 'Curto prazo' | 'Longo prazo'
+  TextColumn get term => text().withDefault(const Constant('Curto prazo'))();
 }
 
 // Tabela de Tarefas
@@ -49,7 +55,25 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) async {
+          await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          // v1 -> v2: campos de importância e prazo nos objectivos.
+          if (from < 2) {
+            await m.addColumn(goals, goals.importance);
+            await m.addColumn(goals, goals.term);
+          }
+        },
+        // NOTA: `PRAGMA foreign_keys = ON` NÃO é activado de propósito.
+        // A sincronização actual (mirror, sem uuid) recria linhas com novos
+        // ids, o que quebraria referências goalId. Activar apenas quando a
+        // sync passar a usar chaves estáveis. Ver docs/ARQUITECTURA.md.
+      );
 }
 
 LazyDatabase _openConnection() {

@@ -102,6 +102,28 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _importanceMeta = const VerificationMeta(
+    'importance',
+  );
+  @override
+  late final GeneratedColumn<String> importance = GeneratedColumn<String>(
+    'importance',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Média'),
+  );
+  static const VerificationMeta _termMeta = const VerificationMeta('term');
+  @override
+  late final GeneratedColumn<String> term = GeneratedColumn<String>(
+    'term',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Curto prazo'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -112,6 +134,8 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
     progressPercentage,
     isCompleted,
     createdAt,
+    importance,
+    term,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -181,6 +205,18 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('importance')) {
+      context.handle(
+        _importanceMeta,
+        importance.isAcceptableOrUnknown(data['importance']!, _importanceMeta),
+      );
+    }
+    if (data.containsKey('term')) {
+      context.handle(
+        _termMeta,
+        term.isAcceptableOrUnknown(data['term']!, _termMeta),
+      );
+    }
     return context;
   }
 
@@ -222,6 +258,14 @@ class $GoalsTable extends Goals with TableInfo<$GoalsTable, Goal> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      importance: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}importance'],
+      )!,
+      term: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}term'],
+      )!,
     );
   }
 
@@ -240,6 +284,8 @@ class Goal extends DataClass implements Insertable<Goal> {
   final int progressPercentage;
   final bool isCompleted;
   final DateTime createdAt;
+  final String importance;
+  final String term;
   const Goal({
     required this.id,
     required this.title,
@@ -249,6 +295,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     required this.progressPercentage,
     required this.isCompleted,
     required this.createdAt,
+    required this.importance,
+    required this.term,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -265,6 +313,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     map['progress_percentage'] = Variable<int>(progressPercentage);
     map['is_completed'] = Variable<bool>(isCompleted);
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['importance'] = Variable<String>(importance);
+    map['term'] = Variable<String>(term);
     return map;
   }
 
@@ -282,6 +332,8 @@ class Goal extends DataClass implements Insertable<Goal> {
       progressPercentage: Value(progressPercentage),
       isCompleted: Value(isCompleted),
       createdAt: Value(createdAt),
+      importance: Value(importance),
+      term: Value(term),
     );
   }
 
@@ -299,6 +351,8 @@ class Goal extends DataClass implements Insertable<Goal> {
       progressPercentage: serializer.fromJson<int>(json['progressPercentage']),
       isCompleted: serializer.fromJson<bool>(json['isCompleted']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      importance: serializer.fromJson<String>(json['importance']),
+      term: serializer.fromJson<String>(json['term']),
     );
   }
   @override
@@ -313,6 +367,8 @@ class Goal extends DataClass implements Insertable<Goal> {
       'progressPercentage': serializer.toJson<int>(progressPercentage),
       'isCompleted': serializer.toJson<bool>(isCompleted),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'importance': serializer.toJson<String>(importance),
+      'term': serializer.toJson<String>(term),
     };
   }
 
@@ -325,6 +381,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     int? progressPercentage,
     bool? isCompleted,
     DateTime? createdAt,
+    String? importance,
+    String? term,
   }) => Goal(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -334,6 +392,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     progressPercentage: progressPercentage ?? this.progressPercentage,
     isCompleted: isCompleted ?? this.isCompleted,
     createdAt: createdAt ?? this.createdAt,
+    importance: importance ?? this.importance,
+    term: term ?? this.term,
   );
   Goal copyWithCompanion(GoalsCompanion data) {
     return Goal(
@@ -353,6 +413,10 @@ class Goal extends DataClass implements Insertable<Goal> {
           ? data.isCompleted.value
           : this.isCompleted,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      importance: data.importance.present
+          ? data.importance.value
+          : this.importance,
+      term: data.term.present ? data.term.value : this.term,
     );
   }
 
@@ -366,7 +430,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           ..write('category: $category, ')
           ..write('progressPercentage: $progressPercentage, ')
           ..write('isCompleted: $isCompleted, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('importance: $importance, ')
+          ..write('term: $term')
           ..write(')'))
         .toString();
   }
@@ -381,6 +447,8 @@ class Goal extends DataClass implements Insertable<Goal> {
     progressPercentage,
     isCompleted,
     createdAt,
+    importance,
+    term,
   );
   @override
   bool operator ==(Object other) =>
@@ -393,7 +461,9 @@ class Goal extends DataClass implements Insertable<Goal> {
           other.category == this.category &&
           other.progressPercentage == this.progressPercentage &&
           other.isCompleted == this.isCompleted &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.importance == this.importance &&
+          other.term == this.term);
 }
 
 class GoalsCompanion extends UpdateCompanion<Goal> {
@@ -405,6 +475,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
   final Value<int> progressPercentage;
   final Value<bool> isCompleted;
   final Value<DateTime> createdAt;
+  final Value<String> importance;
+  final Value<String> term;
   const GoalsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -414,6 +486,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.progressPercentage = const Value.absent(),
     this.isCompleted = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.importance = const Value.absent(),
+    this.term = const Value.absent(),
   });
   GoalsCompanion.insert({
     this.id = const Value.absent(),
@@ -424,6 +498,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     this.progressPercentage = const Value.absent(),
     this.isCompleted = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.importance = const Value.absent(),
+    this.term = const Value.absent(),
   }) : title = Value(title);
   static Insertable<Goal> custom({
     Expression<int>? id,
@@ -434,6 +510,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Expression<int>? progressPercentage,
     Expression<bool>? isCompleted,
     Expression<DateTime>? createdAt,
+    Expression<String>? importance,
+    Expression<String>? term,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -444,6 +522,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       if (progressPercentage != null) 'progress_percentage': progressPercentage,
       if (isCompleted != null) 'is_completed': isCompleted,
       if (createdAt != null) 'created_at': createdAt,
+      if (importance != null) 'importance': importance,
+      if (term != null) 'term': term,
     });
   }
 
@@ -456,6 +536,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     Value<int>? progressPercentage,
     Value<bool>? isCompleted,
     Value<DateTime>? createdAt,
+    Value<String>? importance,
+    Value<String>? term,
   }) {
     return GoalsCompanion(
       id: id ?? this.id,
@@ -466,6 +548,8 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
       progressPercentage: progressPercentage ?? this.progressPercentage,
       isCompleted: isCompleted ?? this.isCompleted,
       createdAt: createdAt ?? this.createdAt,
+      importance: importance ?? this.importance,
+      term: term ?? this.term,
     );
   }
 
@@ -496,6 +580,12 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (importance.present) {
+      map['importance'] = Variable<String>(importance.value);
+    }
+    if (term.present) {
+      map['term'] = Variable<String>(term.value);
+    }
     return map;
   }
 
@@ -509,7 +599,9 @@ class GoalsCompanion extends UpdateCompanion<Goal> {
           ..write('category: $category, ')
           ..write('progressPercentage: $progressPercentage, ')
           ..write('isCompleted: $isCompleted, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('importance: $importance, ')
+          ..write('term: $term')
           ..write(')'))
         .toString();
   }
@@ -1637,6 +1729,8 @@ typedef $$GoalsTableCreateCompanionBuilder =
       Value<int> progressPercentage,
       Value<bool> isCompleted,
       Value<DateTime> createdAt,
+      Value<String> importance,
+      Value<String> term,
     });
 typedef $$GoalsTableUpdateCompanionBuilder =
     GoalsCompanion Function({
@@ -1648,6 +1742,8 @@ typedef $$GoalsTableUpdateCompanionBuilder =
       Value<int> progressPercentage,
       Value<bool> isCompleted,
       Value<DateTime> createdAt,
+      Value<String> importance,
+      Value<String> term,
     });
 
 class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
@@ -1695,6 +1791,16 @@ class $$GoalsTableFilterComposer extends Composer<_$AppDatabase, $GoalsTable> {
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get importance => $composableBuilder(
+    column: $table.importance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get term => $composableBuilder(
+    column: $table.term,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1747,6 +1853,16 @@ class $$GoalsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get importance => $composableBuilder(
+    column: $table.importance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get term => $composableBuilder(
+    column: $table.term,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GoalsTableAnnotationComposer
@@ -1789,6 +1905,14 @@ class $$GoalsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get importance => $composableBuilder(
+    column: $table.importance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get term =>
+      $composableBuilder(column: $table.term, builder: (column) => column);
 }
 
 class $$GoalsTableTableManager
@@ -1827,6 +1951,8 @@ class $$GoalsTableTableManager
                 Value<int> progressPercentage = const Value.absent(),
                 Value<bool> isCompleted = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String> importance = const Value.absent(),
+                Value<String> term = const Value.absent(),
               }) => GoalsCompanion(
                 id: id,
                 title: title,
@@ -1836,6 +1962,8 @@ class $$GoalsTableTableManager
                 progressPercentage: progressPercentage,
                 isCompleted: isCompleted,
                 createdAt: createdAt,
+                importance: importance,
+                term: term,
               ),
           createCompanionCallback:
               ({
@@ -1847,6 +1975,8 @@ class $$GoalsTableTableManager
                 Value<int> progressPercentage = const Value.absent(),
                 Value<bool> isCompleted = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String> importance = const Value.absent(),
+                Value<String> term = const Value.absent(),
               }) => GoalsCompanion.insert(
                 id: id,
                 title: title,
@@ -1856,6 +1986,8 @@ class $$GoalsTableTableManager
                 progressPercentage: progressPercentage,
                 isCompleted: isCompleted,
                 createdAt: createdAt,
+                importance: importance,
+                term: term,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

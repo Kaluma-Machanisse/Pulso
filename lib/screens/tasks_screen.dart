@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/task_providers.dart';
+import '../widgets/confirm_dialog.dart';
 import 'add_task_screen.dart';
 
 class TasksScreen extends ConsumerWidget {
@@ -30,8 +31,10 @@ class TasksScreen extends ConsumerWidget {
                   ),
                 );
               },
-              onLongPress: () {
-                ref.read(deleteTaskProvider(task.id));
+              onLongPress: () async {
+                if (await confirmarEliminacao(context, task.title)) {
+                  await ref.read(deleteTaskProvider(task.id).future);
+                }
               },
             );
           },
