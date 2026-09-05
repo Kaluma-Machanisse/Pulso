@@ -160,3 +160,50 @@ Ronda de correcções de bugs, segurança e robustez. Nada aqui muda o
 - Migração v2→v3 testada no Linux desktop (sem perda de dados).
 - Nota: `printing` (exportar PDF) e as notificações agendadas só funcionam
   a sério no Android; no desktop são ignorados/no-op.
+
+---
+
+# Frontend dos Objectivos + splash — Setembro 2026
+
+## Ecrã de Objectivos (`goals_screen.dart`)
+
+- Lista passa a **cartões** agrupados por prazo (**Curto** / **Longo prazo**),
+  ordenados pela data-alvo mais próxima.
+- Cada cartão: faixa lateral com a **cor da importância**
+  (Baixa=azul-cinza, Média=azul, Alta=laranja, Crítica=vermelho), **ponto de
+  prazo** que muda de cor com a proximidade da data
+  (verde >30d → amarelo ≤30d → laranja ≤7d → vermelho hoje/atrasado),
+  barra de progresso, texto "faltam N d" / "atrasado N d", e botão **Concluir**
+  (põe a 100% → arquiva).
+- Swipe ou menu (3 pontos) para eliminar; estado vazio com ícone.
+
+## Arranque robusto (`splash_screen.dart` + `auth_service.dart`)
+
+- **Bug corrigido:** o arranque ficava preso quando a rede estava lenta —
+  `signInWithPassword` não tinha timeout.
+  - `AuthService.signIn()` agora tem `.timeout(8s)`.
+  - `SplashScreen` corre `Future.wait([ Future.any([signIn(), delay(6s)]),
+    delay(2.5s) ])` — abre **sempre** (offline inclusive) e fica visível no
+    mínimo 2,5 s para a animação correr toda.
+
+## Identidade visual
+
+- **Wordmark:** "pulso" em **Familjen Grotesk** (700) com uma linha de
+  batimento (ECG) por baixo, na cor de marca. Sem tagline.
+- **Fonte da app:** **Hanken Grotesk** (`fontFamily` do tema).
+  TTFs variáveis em `assets/fonts/` (OFL).
+- **Paleta** (`lib/theme/pulso_theme.dart` → `PulsoColors` / `PulsoTheme`):
+  primária `#2F6BED` (escuro `#5B8CFF`), tinta `#15171C`, neutro `#707784`,
+  linha `#E7E9EE`, fundo `#F7F8FA` / `#0F1115`. Estado: sucesso `#1FA971`,
+  aviso `#E8A13C`, erro `#E5484D` — separados da cor de marca.
+- `main.dart` passa a usar `PulsoTheme.light()` / `PulsoTheme.dark()`.
+- **Splash:** fundo do tema, wordmark, linha desenhada em `CustomPainter`
+  (`_PulseLinePainter`) com animação de traçado + batida; respeita
+  `MediaQuery.disableAnimations`.
+- **Em falta (próximo):** `flutter_native_splash` (sem flash branco) e ícone
+  de app a partir do símbolo.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- Testado a correr no Linux desktop (fontes carregam, tema aplica).

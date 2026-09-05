@@ -44,3 +44,25 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    # Texto da app
+    - family: HankenGrotesk
+      fonts:
+        - asset: assets/fonts/HankenGrotesk.ttf
+        - asset: assets/fonts/HankenGrotesk.ttf
+          weight: 400
+        - asset: assets/fonts/HankenGrotesk.ttf
+          weight: 500
+        - asset: assets/fonts/HankenGrotesk.ttf
+          weight: 600
+        - asset: assets/fonts/HankenGrotesk.ttf
+          weight: 700
+    # Wordmark / logótipo
+    - family: FamiljenGrotesk
+      fonts:
+        - asset: assets/fonts/FamiljenGrotesk.ttf
+        - asset: assets/fonts/FamiljenGrotesk.ttf
+          weight: 500
+        - asset: assets/fonts/FamiljenGrotesk.ttf
+          weight: 700

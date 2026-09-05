@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
 import 'services/notification_service.dart';
 import 'providers/settings_providers.dart';
+import 'theme/pulso_theme.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -30,17 +31,8 @@ class PulsoApp extends ConsumerWidget {
       title: 'Pulso',
       debugShowCheckedModeBanner: false,
       themeMode: settings.themeMode,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.dark,
-        ),
-      ),
+      theme: PulsoTheme.light(),
+      darkTheme: PulsoTheme.dark(),
       home: const SplashScreen(),
     );
   }

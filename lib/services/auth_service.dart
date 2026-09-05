@@ -14,13 +14,17 @@ class AuthService {
     }
 
     try {
-      await _supabase.auth.signInWithPassword(
-        email: AuthConfig.email,
-        password: AuthConfig.password,
-      );
+      await _supabase.auth
+          .signInWithPassword(
+            email: AuthConfig.email,
+            password: AuthConfig.password,
+          )
+          .timeout(const Duration(seconds: 8));
       return true;
     } catch (e) {
-      debugPrint('Erro no login automático: $e');
+      // Sem rede / Supabase indisponível: a app funciona na mesma offline
+      // com a base de dados local, por isso não bloqueamos o arranque.
+      debugPrint('Login automático falhou (a app continua offline): $e');
       return false;
     }
   }

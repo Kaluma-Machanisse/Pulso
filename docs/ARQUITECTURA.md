@@ -127,7 +127,7 @@ Sempre que mudares colunas:
 |---|---|---|
 | `splash_screen.dart` | Stateful | Delay 500ms → `AuthService.signIn()` → `HomeScreen` |
 | `home_screen.dart` | ConsumerStateful | `BottomNavigationBar` com 5 abas; no arranque chama `SmsService.initialize` + `ReminderService.checkAndNotify` |
-| `goals_screen.dart` | ConsumerWidget | Lista de objectivos **activos**; toque = editar, **swipe** ou menu (3 pontos) = eliminar (com confirmação); menu do AppBar → arquivados / relatórios |
+| `goals_screen.dart` | ConsumerWidget | Objectivos **activos** em **cartões** agrupados por prazo (Curto/Longo), ordenados pela data-alvo mais próxima. Cada cartão: faixa lateral com a **cor da importância**, **ponto de prazo** que muda de cor à medida que a data se aproxima (verde→amarelo→laranja→vermelho/atrasado), barra de progresso, contagem de dias, botão **Concluir** (põe a 100% → arquiva). Swipe ou menu (3 pontos) = eliminar; menu do AppBar → arquivados / relatórios |
 | `archived_goals_screen.dart` | ConsumerWidget | Objectivos concluídos (arquivados); toque = ver/editar, toque longo = apagar de vez |
 | `add_goal_screen.dart` | ConsumerStateful | Formulário criar/editar objectivo (título, descrição, categoria, **importância**, **prazo**, data, progresso). Ao guardar: sweep de arquivo + reagenda lembretes |
 | `reports_screen.dart` | ConsumerWidget | Histórico de relatórios mensais; toque = detalhe, botão = exportar PDF, toque longo = apagar |
