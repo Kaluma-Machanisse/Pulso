@@ -5,6 +5,7 @@ import '../database/database.dart';
 import '../providers/task_providers.dart';
 import '../providers/goal_providers.dart';
 import '../services/goal_progress_service.dart';
+import '../services/task_reminder_service.dart';
 
 class AddTaskScreen extends ConsumerStatefulWidget {
   final Task? task;
@@ -78,11 +79,13 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
       await ref.read(updateTaskProvider(updatedTask).future);
     }
 
-    // Actualiza o progresso do(s) objectivo(s) afectado(s).
+    // Actualiza o progresso do(s) objectivo(s) afectado(s) e reagenda os
+    // lembretes das tarefas.
     await GoalProgressService.recompute(ref, _goalId);
     if (oldGoalId != null && oldGoalId != _goalId) {
       await GoalProgressService.recompute(ref, oldGoalId);
     }
+    await TaskReminderService.rescheduleAll(ref);
 
     if (mounted) Navigator.of(context).pop();
   }

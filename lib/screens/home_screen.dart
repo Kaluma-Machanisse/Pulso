@@ -7,6 +7,7 @@ import '../services/reminder_service.dart';
 import '../services/goal_reminder_service.dart';
 import '../services/goal_archive_service.dart';
 import '../services/goal_progress_service.dart';
+import '../services/task_reminder_service.dart';
 import '../services/report_service.dart';
 import '../providers/database_provider.dart';
 import 'goals_screen.dart';
@@ -50,6 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await GoalArchiveService.sweep(ref);
       // Mantém os lembretes agendados alinhados com o estado actual da BD.
       await GoalReminderService.rescheduleAll(ref);
+      await TaskReminderService.rescheduleAll(ref);
       // Gera os relatórios mensais em falta (do mês anterior para trás).
       await ReportService.ensureMonthlyReports(ref);
       // Retenção: pergunta antes de apagar relatórios com mais de 1 ano.
