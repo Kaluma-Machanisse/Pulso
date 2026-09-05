@@ -36,6 +36,16 @@ class Reports extends Table {
   DateTimeColumn get generatedAt => dateTime().withDefault(currentDateAndTime)();
   // Conteúdo do relatório serializado em JSON (ver ReportService).
   TextColumn get dataJson => text()();
+  // v4 — 'objectivos' | 'financeiro'
+  TextColumn get type => text().withDefault(const Constant('objectivos'))();
+}
+
+// Tabela de Orçamentos por categoria (v4)
+class Budgets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get category => text()();
+  RealColumn get monthlyLimit => real()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 // Tabela de Tarefas
@@ -64,12 +74,12 @@ class Transactions extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [Goals, Tasks, Transactions, Reports])
+@DriftDatabase(tables: [Goals, Tasks, Transactions, Reports, Budgets])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -86,6 +96,11 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             await m.addColumn(goals, goals.archivedAt);
             await m.createTable(reports);
+          }
+          // v3 -> v4: orçamentos por categoria + tipo de relatório.
+          if (from < 4) {
+            await m.createTable(budgets);
+            await m.addColumn(reports, reports.type);
           }
         },
         // NOTA: `PRAGMA foreign_keys = ON` NÃO é activado de propósito.

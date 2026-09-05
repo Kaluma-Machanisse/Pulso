@@ -18,10 +18,31 @@ final addTransactionProvider =
   await db.into(db.transactions).insert(tx);
 });
 
+final updateTransactionProvider =
+    FutureProvider.family<void, Transaction>((ref, tx) async {
+  final db = ref.read(databaseProvider);
+  await db.update(db.transactions).replace(tx);
+});
+
 final deleteTransactionProvider =
     FutureProvider.family<void, int>((ref, id) async {
   final db = ref.read(databaseProvider);
   await (db.delete(db.transactions)..where((t) => t.id.equals(id))).go();
+});
+
+/// Despesas do mês corrente agrupadas por categoria (maior primeiro).
+final currentMonthExpensesByCategoryProvider =
+    Provider<List<MapEntry<String, double>>>((ref) {
+  final txs = ref.watch(transactionsProvider).valueOrNull ?? const [];
+  final now = DateTime.now();
+  final Map<String, double> m = {};
+  for (final tx in txs) {
+    if (tx.type != 'despesa') continue;
+    if (tx.date.year != now.year || tx.date.month != now.month) continue;
+    m[tx.category] = (m[tx.category] ?? 0) + tx.amount;
+  }
+  final list = m.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+  return list;
 });
 
 final balanceProvider = StreamProvider<double>((ref) {

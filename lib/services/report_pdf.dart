@@ -185,7 +185,124 @@ class ReportPdf {
     final bytes = await build(r);
     await Printing.layoutPdf(
       onLayout: (_) async => bytes,
-      name: 'pulso_relatorio_${r.month}.pdf',
+      name: 'pulso_objectivos_${r.month}.pdf',
+    );
+  }
+
+  // ------------------- Relatório financeiro -------------------
+
+  static Future<Uint8List> buildFinancial(FinancialReport r, String moeda) async {
+    final doc = pw.Document();
+    final maxV = r.despesasPorCategoria.isEmpty
+        ? 0.0
+        : r.despesasPorCategoria.first.value;
+
+    pw.Widget card(String valor, String rotulo) => pw.Expanded(
+          child: pw.Container(
+            margin: const pw.EdgeInsets.only(right: 8),
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.grey100,
+              borderRadius: pw.BorderRadius.circular(6),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('$valor $moeda',
+                    style: pw.TextStyle(
+                        fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                pw.Text(rotulo,
+                    style: const pw.TextStyle(
+                        fontSize: 9, color: PdfColors.grey700)),
+              ],
+            ),
+          ),
+        );
+
+    doc.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(32),
+      build: (context) => [
+        pw.Header(
+          level: 0,
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('Pulso — Relatório mensal',
+                  style: pw.TextStyle(
+                      fontSize: 20, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 2),
+              pw.Text('Finanças · ${_mesPorExtenso(r.month)}',
+                  style: const pw.TextStyle(
+                      fontSize: 12, color: PdfColors.grey700)),
+              pw.Text('Gerado em ${_data(r.generatedAt)}',
+                  style: const pw.TextStyle(
+                      fontSize: 9, color: PdfColors.grey500)),
+            ],
+          ),
+        ),
+        pw.Row(children: [
+          card(r.receitas.toStringAsFixed(0), 'Receitas'),
+          card(r.despesas.toStringAsFixed(0), 'Despesas'),
+          card(r.saldo.toStringAsFixed(0), 'Saldo'),
+        ]),
+        pw.SizedBox(height: 6),
+        pw.Text('${r.nTransacoes} transações no mês',
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+        pw.SizedBox(height: 20),
+        pw.Text('Despesas por categoria',
+            style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 8),
+        if (r.despesasPorCategoria.isEmpty)
+          pw.Text('Sem despesas.',
+              style: const pw.TextStyle(color: PdfColors.grey600))
+        else
+          ...r.despesasPorCategoria.map((e) => pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 8),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(e.key, style: const pw.TextStyle(fontSize: 9)),
+                        pw.Text('${e.value.toStringAsFixed(0)} $moeda',
+                            style: const pw.TextStyle(fontSize: 9)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Stack(children: [
+                      pw.Container(
+                        width: _barWidth,
+                        height: 8,
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.grey300,
+                          borderRadius: pw.BorderRadius.circular(4),
+                        ),
+                      ),
+                      pw.Container(
+                        width: maxV <= 0 ? 0 : _barWidth * e.value / maxV,
+                        height: 8,
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.blue400,
+                          borderRadius: pw.BorderRadius.circular(4),
+                        ),
+                      ),
+                    ]),
+                  ],
+                ),
+              )),
+      ],
+    ));
+
+    return doc.save();
+  }
+
+  static Future<void> openFinancial(FinancialReport r, String moeda) async {
+    final bytes = await buildFinancial(r, moeda);
+    await Printing.layoutPdf(
+      onLayout: (_) async => bytes,
+      name: 'pulso_financas_${r.month}.pdf',
     );
   }
 }

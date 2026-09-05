@@ -3,12 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
 import '../database/database.dart';
 import '../providers/transaction_providers.dart';
+import '../providers/settings_providers.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
-  const AddTransactionScreen({super.key});
+  final Transaction? tx;
+  const AddTransactionScreen({super.key, this.tx});
 
   @override
-  ConsumerState<AddTransactionScreen> createState() => _AddTransactionScreenState();
+  ConsumerState<AddTransactionScreen> createState() =>
+      _AddTransactionScreenState();
 }
 
 class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
@@ -27,17 +30,22 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     'Lazer',
     'Salário',
     'Negócio',
+    'SMS',
     'Outro',
   ];
 
   @override
   void initState() {
     super.initState();
-    _amountController = TextEditingController();
-    _descriptionController = TextEditingController();
-    _type = 'despesa';
-    _category = 'Geral';
-    _date = DateTime.now();
+    final tx = widget.tx;
+    _amountController =
+        TextEditingController(text: tx != null ? tx.amount.toString() : '');
+    _descriptionController =
+        TextEditingController(text: tx?.description ?? '');
+    _type = tx?.type ?? 'despesa';
+    _category = tx?.category ?? 'Geral';
+    _date = tx?.date ?? DateTime.now();
+    if (!_categories.contains(_category)) _categories.add(_category);
   }
 
   @override
@@ -48,30 +56,43 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   }
 
   Future<void> _save() async {
-    if (_formKey.currentState!.validate()) {
-      final amount = double.tryParse(_amountController.text) ?? 0;
+    if (!_formKey.currentState!.validate()) return;
+    final amount = double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0;
+    final desc = _descriptionController.text.isNotEmpty
+        ? Value(_descriptionController.text)
+        : const Value<String?>(null);
 
-      final newTx = TransactionsCompanion(
+    if (widget.tx == null) {
+      await ref.read(addTransactionProvider(TransactionsCompanion(
         amount: Value(amount),
         type: Value(_type),
         category: Value(_category),
-        description: _descriptionController.text.isNotEmpty
-            ? Value(_descriptionController.text)
-            : const Value.absent(),
+        description: desc,
         date: Value(_date),
         source: const Value('manual'),
-      );
-
-      await ref.read(addTransactionProvider(newTx).future);
-
-      if (mounted) Navigator.of(context).pop();
+      )).future);
+    } else {
+      await ref.read(updateTransactionProvider(widget.tx!.copyWith(
+        amount: amount,
+        type: _type,
+        category: _category,
+        description: desc,
+        date: _date,
+      )).future);
     }
+
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final moeda = ref.watch(settingsProvider).currency;
+    final editar = widget.tx != null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Nova Transação')),
+      appBar: AppBar(
+        title: Text(editar ? 'Editar Transação' : 'Nova Transação'),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -94,10 +115,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _amountController,
-              decoration: const InputDecoration(labelText: 'Valor (MZN) *'),
-              keyboardType: TextInputType.number,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Obrigatório' : null,
+              decoration: InputDecoration(labelText: 'Valor ($moeda) *'),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              validator: (v) {
+                final n = double.tryParse((v ?? '').replaceAll(',', '.'));
+                if (n == null || n <= 0) return 'Valor inválido';
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
@@ -116,9 +141,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             ),
             const SizedBox(height: 16),
             ListTile(
+              contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.calendar_today),
-              title:
-                  Text('Data: ${_date.day}/${_date.month}/${_date.year}'),
+              title: Text('Data: ${_date.day}/${_date.month}/${_date.year}'),
               onTap: () async {
                 final picked = await showDatePicker(
                   context: context,
@@ -133,7 +158,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             ElevatedButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.save),
-              label: const Text('Guardar'),
+              label: Text(editar ? 'Guardar' : 'Criar'),
             ),
           ],
         ),

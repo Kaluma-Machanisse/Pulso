@@ -1803,8 +1803,24 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
   @override
-  List<GeneratedColumn> get $columns => [id, month, generatedAt, dataJson];
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('objectivos'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    month,
+    generatedAt,
+    dataJson,
+    type,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1845,6 +1861,12 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
     } else if (isInserting) {
       context.missing(_dataJsonMeta);
     }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    }
     return context;
   }
 
@@ -1870,6 +1892,10 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
         DriftSqlType.string,
         data['${effectivePrefix}data_json'],
       )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
     );
   }
 
@@ -1884,11 +1910,13 @@ class Report extends DataClass implements Insertable<Report> {
   final String month;
   final DateTime generatedAt;
   final String dataJson;
+  final String type;
   const Report({
     required this.id,
     required this.month,
     required this.generatedAt,
     required this.dataJson,
+    required this.type,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1897,6 +1925,7 @@ class Report extends DataClass implements Insertable<Report> {
     map['month'] = Variable<String>(month);
     map['generated_at'] = Variable<DateTime>(generatedAt);
     map['data_json'] = Variable<String>(dataJson);
+    map['type'] = Variable<String>(type);
     return map;
   }
 
@@ -1906,6 +1935,7 @@ class Report extends DataClass implements Insertable<Report> {
       month: Value(month),
       generatedAt: Value(generatedAt),
       dataJson: Value(dataJson),
+      type: Value(type),
     );
   }
 
@@ -1919,6 +1949,7 @@ class Report extends DataClass implements Insertable<Report> {
       month: serializer.fromJson<String>(json['month']),
       generatedAt: serializer.fromJson<DateTime>(json['generatedAt']),
       dataJson: serializer.fromJson<String>(json['dataJson']),
+      type: serializer.fromJson<String>(json['type']),
     );
   }
   @override
@@ -1929,6 +1960,7 @@ class Report extends DataClass implements Insertable<Report> {
       'month': serializer.toJson<String>(month),
       'generatedAt': serializer.toJson<DateTime>(generatedAt),
       'dataJson': serializer.toJson<String>(dataJson),
+      'type': serializer.toJson<String>(type),
     };
   }
 
@@ -1937,11 +1969,13 @@ class Report extends DataClass implements Insertable<Report> {
     String? month,
     DateTime? generatedAt,
     String? dataJson,
+    String? type,
   }) => Report(
     id: id ?? this.id,
     month: month ?? this.month,
     generatedAt: generatedAt ?? this.generatedAt,
     dataJson: dataJson ?? this.dataJson,
+    type: type ?? this.type,
   );
   Report copyWithCompanion(ReportsCompanion data) {
     return Report(
@@ -1951,6 +1985,7 @@ class Report extends DataClass implements Insertable<Report> {
           ? data.generatedAt.value
           : this.generatedAt,
       dataJson: data.dataJson.present ? data.dataJson.value : this.dataJson,
+      type: data.type.present ? data.type.value : this.type,
     );
   }
 
@@ -1960,13 +1995,14 @@ class Report extends DataClass implements Insertable<Report> {
           ..write('id: $id, ')
           ..write('month: $month, ')
           ..write('generatedAt: $generatedAt, ')
-          ..write('dataJson: $dataJson')
+          ..write('dataJson: $dataJson, ')
+          ..write('type: $type')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, month, generatedAt, dataJson);
+  int get hashCode => Object.hash(id, month, generatedAt, dataJson, type);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1974,7 +2010,8 @@ class Report extends DataClass implements Insertable<Report> {
           other.id == this.id &&
           other.month == this.month &&
           other.generatedAt == this.generatedAt &&
-          other.dataJson == this.dataJson);
+          other.dataJson == this.dataJson &&
+          other.type == this.type);
 }
 
 class ReportsCompanion extends UpdateCompanion<Report> {
@@ -1982,17 +2019,20 @@ class ReportsCompanion extends UpdateCompanion<Report> {
   final Value<String> month;
   final Value<DateTime> generatedAt;
   final Value<String> dataJson;
+  final Value<String> type;
   const ReportsCompanion({
     this.id = const Value.absent(),
     this.month = const Value.absent(),
     this.generatedAt = const Value.absent(),
     this.dataJson = const Value.absent(),
+    this.type = const Value.absent(),
   });
   ReportsCompanion.insert({
     this.id = const Value.absent(),
     required String month,
     this.generatedAt = const Value.absent(),
     required String dataJson,
+    this.type = const Value.absent(),
   }) : month = Value(month),
        dataJson = Value(dataJson);
   static Insertable<Report> custom({
@@ -2000,12 +2040,14 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     Expression<String>? month,
     Expression<DateTime>? generatedAt,
     Expression<String>? dataJson,
+    Expression<String>? type,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (month != null) 'month': month,
       if (generatedAt != null) 'generated_at': generatedAt,
       if (dataJson != null) 'data_json': dataJson,
+      if (type != null) 'type': type,
     });
   }
 
@@ -2014,12 +2056,14 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     Value<String>? month,
     Value<DateTime>? generatedAt,
     Value<String>? dataJson,
+    Value<String>? type,
   }) {
     return ReportsCompanion(
       id: id ?? this.id,
       month: month ?? this.month,
       generatedAt: generatedAt ?? this.generatedAt,
       dataJson: dataJson ?? this.dataJson,
+      type: type ?? this.type,
     );
   }
 
@@ -2038,6 +2082,9 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     if (dataJson.present) {
       map['data_json'] = Variable<String>(dataJson.value);
     }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
     return map;
   }
 
@@ -2047,7 +2094,310 @@ class ReportsCompanion extends UpdateCompanion<Report> {
           ..write('id: $id, ')
           ..write('month: $month, ')
           ..write('generatedAt: $generatedAt, ')
-          ..write('dataJson: $dataJson')
+          ..write('dataJson: $dataJson, ')
+          ..write('type: $type')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BudgetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _monthlyLimitMeta = const VerificationMeta(
+    'monthlyLimit',
+  );
+  @override
+  late final GeneratedColumn<double> monthlyLimit = GeneratedColumn<double>(
+    'monthly_limit',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, category, monthlyLimit, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'budgets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Budget> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('monthly_limit')) {
+      context.handle(
+        _monthlyLimitMeta,
+        monthlyLimit.isAcceptableOrUnknown(
+          data['monthly_limit']!,
+          _monthlyLimitMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_monthlyLimitMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Budget map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Budget(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      monthlyLimit: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}monthly_limit'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BudgetsTable createAlias(String alias) {
+    return $BudgetsTable(attachedDatabase, alias);
+  }
+}
+
+class Budget extends DataClass implements Insertable<Budget> {
+  final int id;
+  final String category;
+  final double monthlyLimit;
+  final DateTime createdAt;
+  const Budget({
+    required this.id,
+    required this.category,
+    required this.monthlyLimit,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['category'] = Variable<String>(category);
+    map['monthly_limit'] = Variable<double>(monthlyLimit);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  BudgetsCompanion toCompanion(bool nullToAbsent) {
+    return BudgetsCompanion(
+      id: Value(id),
+      category: Value(category),
+      monthlyLimit: Value(monthlyLimit),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory Budget.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Budget(
+      id: serializer.fromJson<int>(json['id']),
+      category: serializer.fromJson<String>(json['category']),
+      monthlyLimit: serializer.fromJson<double>(json['monthlyLimit']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'category': serializer.toJson<String>(category),
+      'monthlyLimit': serializer.toJson<double>(monthlyLimit),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  Budget copyWith({
+    int? id,
+    String? category,
+    double? monthlyLimit,
+    DateTime? createdAt,
+  }) => Budget(
+    id: id ?? this.id,
+    category: category ?? this.category,
+    monthlyLimit: monthlyLimit ?? this.monthlyLimit,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  Budget copyWithCompanion(BudgetsCompanion data) {
+    return Budget(
+      id: data.id.present ? data.id.value : this.id,
+      category: data.category.present ? data.category.value : this.category,
+      monthlyLimit: data.monthlyLimit.present
+          ? data.monthlyLimit.value
+          : this.monthlyLimit,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Budget(')
+          ..write('id: $id, ')
+          ..write('category: $category, ')
+          ..write('monthlyLimit: $monthlyLimit, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, category, monthlyLimit, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Budget &&
+          other.id == this.id &&
+          other.category == this.category &&
+          other.monthlyLimit == this.monthlyLimit &&
+          other.createdAt == this.createdAt);
+}
+
+class BudgetsCompanion extends UpdateCompanion<Budget> {
+  final Value<int> id;
+  final Value<String> category;
+  final Value<double> monthlyLimit;
+  final Value<DateTime> createdAt;
+  const BudgetsCompanion({
+    this.id = const Value.absent(),
+    this.category = const Value.absent(),
+    this.monthlyLimit = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  BudgetsCompanion.insert({
+    this.id = const Value.absent(),
+    required String category,
+    required double monthlyLimit,
+    this.createdAt = const Value.absent(),
+  }) : category = Value(category),
+       monthlyLimit = Value(monthlyLimit);
+  static Insertable<Budget> custom({
+    Expression<int>? id,
+    Expression<String>? category,
+    Expression<double>? monthlyLimit,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (category != null) 'category': category,
+      if (monthlyLimit != null) 'monthly_limit': monthlyLimit,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  BudgetsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? category,
+    Value<double>? monthlyLimit,
+    Value<DateTime>? createdAt,
+  }) {
+    return BudgetsCompanion(
+      id: id ?? this.id,
+      category: category ?? this.category,
+      monthlyLimit: monthlyLimit ?? this.monthlyLimit,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (monthlyLimit.present) {
+      map['monthly_limit'] = Variable<double>(monthlyLimit.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BudgetsCompanion(')
+          ..write('id: $id, ')
+          ..write('category: $category, ')
+          ..write('monthlyLimit: $monthlyLimit, ')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -2060,6 +2410,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TasksTable tasks = $TasksTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $ReportsTable reports = $ReportsTable(this);
+  late final $BudgetsTable budgets = $BudgetsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2069,6 +2420,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tasks,
     transactions,
     reports,
+    budgets,
   ];
 }
 
@@ -2930,6 +3282,7 @@ typedef $$ReportsTableCreateCompanionBuilder =
       required String month,
       Value<DateTime> generatedAt,
       required String dataJson,
+      Value<String> type,
     });
 typedef $$ReportsTableUpdateCompanionBuilder =
     ReportsCompanion Function({
@@ -2937,6 +3290,7 @@ typedef $$ReportsTableUpdateCompanionBuilder =
       Value<String> month,
       Value<DateTime> generatedAt,
       Value<String> dataJson,
+      Value<String> type,
     });
 
 class $$ReportsTableFilterComposer
@@ -2965,6 +3319,11 @@ class $$ReportsTableFilterComposer
 
   ColumnFilters<String> get dataJson => $composableBuilder(
     column: $table.dataJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2997,6 +3356,11 @@ class $$ReportsTableOrderingComposer
     column: $table.dataJson,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ReportsTableAnnotationComposer
@@ -3021,6 +3385,9 @@ class $$ReportsTableAnnotationComposer
 
   GeneratedColumn<String> get dataJson =>
       $composableBuilder(column: $table.dataJson, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
 }
 
 class $$ReportsTableTableManager
@@ -3055,11 +3422,13 @@ class $$ReportsTableTableManager
                 Value<String> month = const Value.absent(),
                 Value<DateTime> generatedAt = const Value.absent(),
                 Value<String> dataJson = const Value.absent(),
+                Value<String> type = const Value.absent(),
               }) => ReportsCompanion(
                 id: id,
                 month: month,
                 generatedAt: generatedAt,
                 dataJson: dataJson,
+                type: type,
               ),
           createCompanionCallback:
               ({
@@ -3067,11 +3436,13 @@ class $$ReportsTableTableManager
                 required String month,
                 Value<DateTime> generatedAt = const Value.absent(),
                 required String dataJson,
+                Value<String> type = const Value.absent(),
               }) => ReportsCompanion.insert(
                 id: id,
                 month: month,
                 generatedAt: generatedAt,
                 dataJson: dataJson,
+                type: type,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -3095,6 +3466,177 @@ typedef $$ReportsTableProcessedTableManager =
       Report,
       PrefetchHooks Function()
     >;
+typedef $$BudgetsTableCreateCompanionBuilder =
+    BudgetsCompanion Function({
+      Value<int> id,
+      required String category,
+      required double monthlyLimit,
+      Value<DateTime> createdAt,
+    });
+typedef $$BudgetsTableUpdateCompanionBuilder =
+    BudgetsCompanion Function({
+      Value<int> id,
+      Value<String> category,
+      Value<double> monthlyLimit,
+      Value<DateTime> createdAt,
+    });
+
+class $$BudgetsTableFilterComposer
+    extends Composer<_$AppDatabase, $BudgetsTable> {
+  $$BudgetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get monthlyLimit => $composableBuilder(
+    column: $table.monthlyLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$BudgetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BudgetsTable> {
+  $$BudgetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get monthlyLimit => $composableBuilder(
+    column: $table.monthlyLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$BudgetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BudgetsTable> {
+  $$BudgetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<double> get monthlyLimit => $composableBuilder(
+    column: $table.monthlyLimit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$BudgetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BudgetsTable,
+          Budget,
+          $$BudgetsTableFilterComposer,
+          $$BudgetsTableOrderingComposer,
+          $$BudgetsTableAnnotationComposer,
+          $$BudgetsTableCreateCompanionBuilder,
+          $$BudgetsTableUpdateCompanionBuilder,
+          (Budget, BaseReferences<_$AppDatabase, $BudgetsTable, Budget>),
+          Budget,
+          PrefetchHooks Function()
+        > {
+  $$BudgetsTableTableManager(_$AppDatabase db, $BudgetsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BudgetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BudgetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$BudgetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<double> monthlyLimit = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => BudgetsCompanion(
+                id: id,
+                category: category,
+                monthlyLimit: monthlyLimit,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String category,
+                required double monthlyLimit,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => BudgetsCompanion.insert(
+                id: id,
+                category: category,
+                monthlyLimit: monthlyLimit,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$BudgetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BudgetsTable,
+      Budget,
+      $$BudgetsTableFilterComposer,
+      $$BudgetsTableOrderingComposer,
+      $$BudgetsTableAnnotationComposer,
+      $$BudgetsTableCreateCompanionBuilder,
+      $$BudgetsTableUpdateCompanionBuilder,
+      (Budget, BaseReferences<_$AppDatabase, $BudgetsTable, Budget>),
+      Budget,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3107,4 +3649,6 @@ class $AppDatabaseManager {
       $$TransactionsTableTableManager(_db, _db.transactions);
   $$ReportsTableTableManager get reports =>
       $$ReportsTableTableManager(_db, _db.reports);
+  $$BudgetsTableTableManager get budgets =>
+      $$BudgetsTableTableManager(_db, _db.budgets);
 }

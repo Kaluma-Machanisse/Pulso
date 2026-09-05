@@ -98,10 +98,57 @@ class ReportGoal {
       );
 }
 
+/// Relatório financeiro mensal.
+class FinancialReport {
+  final String month;
+  final DateTime generatedAt;
+  final double receitas;
+  final double despesas;
+  final int nTransacoes;
+  final List<MapEntry<String, double>> despesasPorCategoria; // maior primeiro
+
+  FinancialReport({
+    required this.month,
+    required this.generatedAt,
+    required this.receitas,
+    required this.despesas,
+    required this.nTransacoes,
+    required this.despesasPorCategoria,
+  });
+
+  double get saldo => receitas - despesas;
+
+  Map<String, dynamic> toJson() => {
+        'month': month,
+        'generated_at': generatedAt.toIso8601String(),
+        'receitas': receitas,
+        'despesas': despesas,
+        'n_transacoes': nTransacoes,
+        'por_categoria': [
+          for (final e in despesasPorCategoria)
+            {'categoria': e.key, 'valor': e.value}
+        ],
+      };
+
+  factory FinancialReport.fromJson(Map<String, dynamic> j) => FinancialReport(
+        month: j['month'] as String,
+        generatedAt: DateTime.parse(j['generated_at'] as String),
+        receitas: (j['receitas'] as num).toDouble(),
+        despesas: (j['despesas'] as num).toDouble(),
+        nTransacoes: j['n_transacoes'] as int? ?? 0,
+        despesasPorCategoria: [
+          for (final e in (j['por_categoria'] as List? ?? []))
+            MapEntry(e['categoria'] as String, (e['valor'] as num).toDouble())
+        ],
+      );
+}
+
 class ReportService {
   ReportService._();
 
   static const int _retentionMonths = 12;
+  static const kObjectivos = 'objectivos';
+  static const kFinanceiro = 'financeiro';
 
   static String monthKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}';
@@ -134,48 +181,96 @@ class ReportService {
     );
   }
 
-  /// Gera os relatórios em falta desde o último registado até ao mês passado.
-  /// Chamar no arranque da app. Não gera o mês corrente (ainda a decorrer).
+  /// Relatório financeiro de um mês (sem gravar).
+  static Future<FinancialReport> buildFinancialForMonth(
+      AppDatabase db, int year, int month) async {
+    final start = _monthStart(year, month);
+    final end = _monthStart(year, month + 1);
+    final txs = (await db.select(db.transactions).get())
+        .where((t) => !t.date.isBefore(start) && t.date.isBefore(end))
+        .toList();
+
+    double receitas = 0, despesas = 0;
+    final Map<String, double> cat = {};
+    for (final t in txs) {
+      if (t.type == 'receita') {
+        receitas += t.amount;
+      } else {
+        despesas += t.amount;
+        cat[t.category] = (cat[t.category] ?? 0) + t.amount;
+      }
+    }
+    final porCat = cat.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return FinancialReport(
+      month: monthKey(start),
+      generatedAt: DateTime.now(),
+      receitas: receitas,
+      despesas: despesas,
+      nTransacoes: txs.length,
+      despesasPorCategoria: porCat,
+    );
+  }
+
+  /// Gera os relatórios (objectivos + financeiro) em falta desde o mês mais
+  /// antigo com actividade até ao mês passado. Chamar no arranque da app.
   static Future<void> ensureMonthlyReports(WidgetRef ref) async {
     final db = ref.read(databaseProvider);
     final now = DateTime.now();
     final currentKey = monthKey(now);
 
     final existentes = (await db.select(db.reports).get())
-        .map((r) => r.month)
+        .map((r) => '${r.month}|${r.type}')
         .toSet();
 
-    // Ponto de partida: mês do objectivo mais antigo (ou o mês passado).
+    // Ponto de partida: primeiro mês com objectivos ou transações.
     final goals = await db.select(db.goals).get();
-    DateTime cursor;
-    if (goals.isEmpty) {
-      return;
-    } else {
-      final earliest = goals
-          .map((g) => g.createdAt)
-          .reduce((a, b) => a.isBefore(b) ? a : b);
-      cursor = DateTime(earliest.year, earliest.month);
-    }
+    final txs = await db.select(db.transactions).get();
+    final datas = [
+      ...goals.map((g) => g.createdAt),
+      ...txs.map((t) => t.date),
+    ];
+    if (datas.isEmpty) return;
+    final earliest = datas.reduce((a, b) => a.isBefore(b) ? a : b);
+    var cursor = DateTime(earliest.year, earliest.month);
 
     while (monthKey(cursor) != currentKey) {
       final key = monthKey(cursor);
-      if (!existentes.contains(key)) {
-        final report = await buildForMonth(db, cursor.year, cursor.month);
-        // Só grava se houve alguma actividade nesse mês.
-        if (report.completed.isNotEmpty || report.active.isNotEmpty) {
+
+      if (!existentes.contains('$key|$kObjectivos')) {
+        final r = await buildForMonth(db, cursor.year, cursor.month);
+        if (r.completed.isNotEmpty || r.active.isNotEmpty) {
           await db.into(db.reports).insert(ReportsCompanion(
                 month: Value(key),
+                type: const Value(kObjectivos),
                 generatedAt: Value(DateTime.now()),
-                dataJson: Value(jsonEncode(report.toJson())),
+                dataJson: Value(jsonEncode(r.toJson())),
               ));
         }
       }
+
+      if (!existentes.contains('$key|$kFinanceiro')) {
+        final r = await buildFinancialForMonth(db, cursor.year, cursor.month);
+        if (r.nTransacoes > 0) {
+          await db.into(db.reports).insert(ReportsCompanion(
+                month: Value(key),
+                type: const Value(kFinanceiro),
+                generatedAt: Value(DateTime.now()),
+                dataJson: Value(jsonEncode(r.toJson())),
+              ));
+        }
+      }
+
       cursor = DateTime(cursor.year, cursor.month + 1);
     }
   }
 
   static MonthlyReport parse(Report row) =>
       MonthlyReport.fromJson(jsonDecode(row.dataJson) as Map<String, dynamic>);
+
+  static FinancialReport parseFinancial(Report row) => FinancialReport.fromJson(
+      jsonDecode(row.dataJson) as Map<String, dynamic>);
 
   /// Relatórios com mais de [_retentionMonths] meses.
   static Future<List<Report>> expiredReports(AppDatabase db) async {
