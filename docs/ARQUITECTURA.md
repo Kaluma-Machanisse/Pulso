@@ -40,8 +40,12 @@ lib/
 ├─ providers/                 Camada Riverpod (ver §5)
 ├─ services/                  Lógica sem UI (ver §6 e §10)
 ├─ screens/                   Ecrãs (ver §4)
+├─ theme/
+│  └─ pulso_theme.dart          Paleta (`PulsoColors`) + temas claro/escuro (`PulsoTheme`)
 └─ widgets/
    └─ confirm_dialog.dart      Diálogo genérico de confirmação de eliminação
+
+assets/fonts/                  Hanken Grotesk (app) + Familjen Grotesk (wordmark)
 ```
 
 ---
@@ -57,7 +61,7 @@ lib/
 | description | text? | |
 | targetDate | dateTime? | data alvo |
 | category | text | default `Geral` (Saúde, Financeiro, Carreira, Pessoal) |
-| progressPercentage | int | 0–100 |
+| progressPercentage | int | 0–100. **Automático** quando o objectivo tem tarefas ligadas (= % de tarefas concluídas); manual (slider) caso não tenha |
 | isCompleted | bool | default `false` |
 | importance | text | **v2** — `Baixa`/`Média`/`Alta`/`Crítica`; define a frequência de lembretes (1/2/3/4 por semana). Default `Média` |
 | term | text | **v2** — `Curto prazo`/`Longo prazo`; organização/filtro. Default `Curto prazo` |
@@ -127,13 +131,13 @@ Sempre que mudares colunas:
 |---|---|---|
 | `splash_screen.dart` | Stateful | Delay 500ms → `AuthService.signIn()` → `HomeScreen` |
 | `home_screen.dart` | ConsumerStateful | `BottomNavigationBar` com 5 abas; no arranque chama `SmsService.initialize` + `ReminderService.checkAndNotify` |
-| `goals_screen.dart` | ConsumerWidget | Objectivos **activos** em **cartões** agrupados por prazo (Curto/Longo), ordenados pela data-alvo mais próxima. Cada cartão: faixa lateral com a **cor da importância**, **ponto de prazo** que muda de cor à medida que a data se aproxima (verde→amarelo→laranja→vermelho/atrasado), barra de progresso, contagem de dias, botão **Concluir** (põe a 100% → arquiva). Swipe ou menu (3 pontos) = eliminar; menu do AppBar → arquivados / relatórios |
+| `goals_screen.dart` | ConsumerWidget | Objectivos **activos** em **cartões** agrupados por prazo (Curto/Longo), ordenados pela data-alvo mais próxima. Cada cartão: faixa lateral com a **cor da importância**, **ponto de prazo** que muda de cor à medida que a data se aproxima (verde→amarelo→laranja→vermelho/atrasado), barra de progresso, contagem de dias, botão **Concluir** (põe a 100% → arquiva). Swipe ou menu (3 pontos) = eliminar; menu do AppBar → arquivados / relatórios. **Seleção múltipla**: toque longo (ou menu → Selecionar) abre o modo; AppBar contextual com contagem, selecionar todos e eliminar em lote |
 | `archived_goals_screen.dart` | ConsumerWidget | Objectivos concluídos (arquivados); toque = ver/editar, toque longo = apagar de vez |
 | `add_goal_screen.dart` | ConsumerStateful | Formulário criar/editar objectivo (título, descrição, categoria, **importância**, **prazo**, data, progresso). Ao guardar: sweep de arquivo + reagenda lembretes |
 | `reports_screen.dart` | ConsumerWidget | Histórico de relatórios mensais; toque = detalhe, botão = exportar PDF, toque longo = apagar |
 | `report_detail_screen.dart` | StatelessWidget | Relatório de um mês (resumo + concluídos + progresso dos activos) + exportar PDF |
-| `tasks_screen.dart` | ConsumerWidget | Lista tarefas; toque = editar, toque longo = eliminar (com confirmação) |
-| `add_task_screen.dart` | ConsumerStateful | Formulário criar/editar tarefa |
+| `tasks_screen.dart` | ConsumerWidget | Lista tarefas com **checkbox** para concluir/reabrir (recalcula o progresso do objectivo ligado); mostra o objectivo no subtítulo; toque = editar, toque longo = eliminar |
+| `add_task_screen.dart` | ConsumerStateful | Formulário criar/editar tarefa: título, descrição, prioridade, **objectivo (opcional)**, **concluída**, data. Ao guardar recalcula o progresso do objectivo novo e do antigo |
 | `finance_screen.dart` | ConsumerStateful | Saldo + lista filtrável (tipo, categoria, mês, ano) + botão de push para Supabase com feedback de sucesso/erro |
 | `add_transaction_screen.dart` | ConsumerStateful | Formulário nova transação (receita/despesa) |
 | `stats_screen.dart` | ConsumerWidget | Gráfico de barras mensal + progresso dos objectivos + botão de pull do Supabase |
@@ -146,7 +150,8 @@ Sempre que mudares colunas:
 | Ficheiro | Providers | Papel |
 |---|---|---|
 | `database_provider.dart` | `databaseProvider` | Instância única de `AppDatabase` |
-| `goal_providers.dart` | `goalsProvider` (stream), `addGoalProvider`, `updateGoalProvider`, `deleteGoalProvider` | CRUD de objectivos |
+| `goal_providers.dart` | `goalsProvider` (activos), `archivedGoalsProvider`, `addGoalProvider`, `updateGoalProvider`, `deleteGoalProvider` | CRUD de objectivos |
+| `goal_selection_provider.dart` | `goalSelectionProvider` (`Set<int>`) | Ids selecionados no modo de seleção múltipla (vazio = desligado) |
 | `task_providers.dart` | `tasksProvider` (stream), `addTaskProvider`, `updateTaskProvider`, `deleteTaskProvider`, `tasksByGoalProvider` | CRUD de tarefas |
 | `transaction_providers.dart` | `transactionsProvider`, `addTransactionProvider`, `deleteTransactionProvider`, `balanceProvider`, `filteredTransactionsProvider` | CRUD + saldo + lista filtrada |
 | `filter_providers.dart` | `financeFilterProvider` (`StateNotifier`) | Estado dos filtros: `type`, `category`, `month`, `year`, `reset()` |
@@ -167,6 +172,7 @@ Sempre que mudares colunas:
 | `notification_service.dart` | `initialize()` — canal Android + fuso horário (`Africa/Maputo`); `showNotification()` imediata; `scheduleAt()` agenda uma única no futuro (`zonedSchedule`, modo inexacto); `cancel()`/`cancelRange()` |
 | `goal_reminder_service.dart` | Agenda os lembretes de cada objectivo conforme a **importância** (1–4/semana) + 1 no dia da data-alvo; janela de 90 dias; `rescheduleForGoal`, `rescheduleAll` (arranque), `cancelForGoal` (ao eliminar). Ver §10 |
 | `goal_archive_service.dart` | Arquiva objectivos a 100% (`archivedAt`), desarquiva se o progresso descer; `apply()` / `sweep()` |
+| `goal_progress_service.dart` | Progresso automático = tarefas concluídas ÷ totais do objectivo. `recompute(goalId)` (após mexer numa tarefa), `recomputeAll()` (arranque). Chama `GoalArchiveService.apply` + `rescheduleForGoal` |
 | `report_service.dart` | `MonthlyReport` (objectivos concluídos no mês + activos), gera os meses em falta no arranque, retenção de 1 ano |
 | `report_pdf.dart` | Exporta um `MonthlyReport` para PDF (via `printing`) |
 | `reminder_service.dart` | `checkAndNotify(ref)` — verificação **ao abrir a app**: respeita `notificationsEnabled`; notifica tarefas a vencer hoje/amanhã e objectivos <50% com data-alvo em ≤7 dias. Complementa (não substitui) os lembretes agendados |
@@ -259,6 +265,9 @@ flutter build apk --release
 | *(local)* | 2026-09 | **Manutenção** — segurança, sync robusta, feedback de erros, confirmações, filtros mês/ano. Ver `docs/CORRECOES.md` |
 | *(local)* | 2026-09 | **Objectivos v1** — importância + prazo, lembretes agendados. Ver §10 e `docs/CORRECOES.md` |
 | *(local)* | 2026-09 | **Objectivos v2** — arquivo automático de concluídos + relatórios mensais em PDF. Ver §12 e `docs/CORRECOES.md` |
+| `637404a` | 2026-09 | **Identidade visual** (wordmark Familjen, fonte Hanken, paleta `#2F6BED`, splash animado) + **frontend dos Objectivos** (cartões, agrupamento por prazo, ponto de prazo) |
+| `a5210b3` | 2026-09 | **Seleção múltipla** de objectivos para eliminar em lote |
+| `43ba960` | 2026-09 | **Progresso automático** dos objectivos a partir das tarefas ligadas. Ver §12 |
 
 ---
 
@@ -284,7 +293,8 @@ flutter build apk --release
 |---|---|
 | Criar/editar objectivo (`add_goal_screen`) | `GoalReminderService.rescheduleAll(ref)` |
 | Eliminar objectivo (`goals_screen`) | `GoalReminderService.cancelForGoal(id)` |
-| Abertura da app (`home_screen`) | `rescheduleAll(ref)` — realinha tudo com a BD |
+| Criar/editar/concluir/eliminar tarefa | `GoalProgressService.recompute(goalId)` → (se mudou) reagenda esse objectivo |
+| Abertura da app (`home_screen`) | `recomputeAll` + `sweep` + `rescheduleAll` — realinha tudo com a BD |
 
 ### Esquema de IDs de notificação
 
@@ -313,6 +323,15 @@ intervalo `[base, base+99]`.
 ---
 
 ## 12. Arquivo de objectivos e relatórios mensais
+
+### Progresso automático a partir das tarefas
+
+- Se um objectivo tem **tarefas ligadas** (`Tasks.goalId`), o progresso deixa
+  de ser manual: `progressPercentage = concluídas ÷ totais` (arredondado).
+- `GoalProgressService.recompute(goalId)` corre sempre que uma tarefa desse
+  objectivo é criada/editada/concluída/eliminada; `recomputeAll()` no arranque.
+- Sem tarefas ligadas, o slider manual de `add_goal_screen` continua a valer.
+- O progresso automático encadeia com o arquivo: 100% → arquiva.
 
 ### Arquivo automático
 
