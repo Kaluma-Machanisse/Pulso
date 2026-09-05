@@ -41,6 +41,28 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   drift_dev: ^2.26.1
   build_runner: ^2.4.0
+  flutter_native_splash: ^2.4.4
+  flutter_launcher_icons: ^0.14.2
+
+# Ecrã de arranque nativo (elimina o flash branco antes do Flutter carregar).
+# Regenerar:  dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#F7F8FA"
+  color_dark: "#0F1115"
+  android_12:
+    color: "#F7F8FA"
+    color_dark: "#0F1115"
+  android: true
+  ios: true
+
+# Ícone da app.  Regenerar:  dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#15171C"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
 
 flutter:
   uses-material-design: true
