@@ -34,6 +34,7 @@ dependencies:
   # Relatórios em PDF
   pdf: ^3.11.1
   printing: ^5.13.4
+  notification_listener_service: ^1.0.0
 
 dev_dependencies:
   flutter_test:

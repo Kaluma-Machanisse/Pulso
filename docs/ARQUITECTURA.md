@@ -152,7 +152,7 @@ Sempre que mudares colunas:
 | `add_transaction_screen.dart` | ConsumerStateful | Formulário **criar E editar** transação (recebe `tx?`) |
 | `budgets_screen.dart` | ConsumerWidget | Orçamentos mensais por categoria: definir/editar/eliminar limite, barra de progresso do gasto do mês, marca de ultrapassado |
 | `stats_screen.dart` | ConsumerWidget | Gráfico de barras mensal + progresso dos objectivos + botão de pull do Supabase |
-| `settings_screen.dart` | ConsumerWidget | Tema, moeda, backup/restauro JSON (com confirmação), interruptor de notificações |
+| `settings_screen.dart` | ConsumerWidget | Tema, moeda, backup/restauro JSON (com confirmação), interruptor de notificações, **acesso a notificações bancárias** (Android) |
 
 ---
 
@@ -194,6 +194,8 @@ Sempre que mudares colunas:
 | `task_reminder_service.dart` | Agenda por tarefa com data: aviso na **véspera (18h)** e no **dia (9h)**. `rescheduleForTask` / `rescheduleAll` / `cancelForTask`. Faixa de ids `500000 + taskId*10` |
 | `sms_service.dart` | Pede permissão SMS, escuta mensagens recebidas, passa por `SmsParser` e grava a transação (`await ... .future`) |
 | `sms_parser.dart` | Regras regex para **M-Pesa** e **BIM**: extrai `amount`, `type` (receita/despesa), `reference` |
+| `transaction_ingest_service.dart` | Ponto único: analisa um texto (SMS ou push), **evita duplicados** pela referência (`smsId`) e grava a transação |
+| `bank_notification_service.dart` | **Android** — lê as notificações push de apps de banco/carteira (`notification_listener_service`) e passa o texto ao ingest. Permissão "Acesso a notificações" concedida pelo utilizador |
 | `backup_service.dart` | `exportToJson` / `importFromJson` para `pulso_backup.json` nos documentos da app; importação dentro de transação; devolve `BackupResult` |
 | `sync_service.dart` | Sincronização **mirror** com Supabase (ver §7); todos os métodos devolvem `bool` |
 
@@ -285,9 +287,10 @@ flutter build apk --release
 | `a5210b3` | 2026-09 | **Seleção múltipla** de objectivos para eliminar em lote |
 | `43ba960` | 2026-09 | **Progresso automático** dos objectivos a partir das tarefas ligadas. Ver §12 |
 | `3387ecf` | 2026-09 | Actualização da documentação |
-| *(local)* | 2026-09 | **Ícone da app** + `flutter_native_splash` (sem flash branco) |
-| *(local)* | 2026-09 | **Módulo Tarefas** — cartões, agrupamento, notificações agendadas (`task_reminder_service`), seleção múltipla, filtros |
-| *(local)* | 2026-09 | **Módulo Carteira** — editar transações, gráfico de gastos, **orçamentos** por categoria (schema v4), **relatório financeiro** mensal + PDF |
+| `65d42dd` | 2026-09 | **Ícone da app** + `flutter_native_splash` (sem flash branco) |
+| `d761fec` | 2026-09 | **Módulo Tarefas** — cartões, agrupamento, notificações agendadas (`task_reminder_service`), seleção múltipla, filtros |
+| `934e2e9` | 2026-09 | **Módulo Carteira** — editar transações, gráfico de gastos, orçamentos por categoria (schema v4), relatório financeiro mensal + PDF |
+| *(local)* | 2026-09 | **Leitura de notificações push** de apps bancárias (Android, `notification_listener_service`) + serviço de ingestão partilhado com as SMS |
 
 ---
 

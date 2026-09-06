@@ -33,6 +33,18 @@
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="pulso_lembretes" />
 
+        <!-- notification_listener_service: ler notificações de apps bancárias.
+             O utilizador tem de conceder "Acesso a notificações" nas Definições. -->
+        <service
+            android:label="Leitura de notificações Pulso"
+            android:name="notification.listener.service.NotificationListener"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <!-- flutter_local_notifications: notificações agendadas -->
         <receiver
             android:exported="false"

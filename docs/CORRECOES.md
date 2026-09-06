@@ -289,11 +289,42 @@ Base de dados **v3 → v4**: nova tabela `Budgets`; `Reports.type`
 
 ## Ainda por fazer
 
-- Ler **notificações** de apps bancárias além de SMS (Android
-  `NotificationListenerService`, plugin dedicado).
 - Relatório mensal de **tarefas**.
 
 ## Verificação
 
 - `dart analyze lib` → **No issues found**.
 - `flutter build linux --debug` OK; migração v3→v4 testada a correr no Linux.
+
+---
+
+# Ler notificações push de apps bancárias — Setembro 2026
+
+Além das SMS, a app passa a poder ler as **notificações push** de apps de
+banco/carteira (M-Pesa, e-Mola, mKesh, Millennium bim, etc.) e criar
+transações. **Só Android.**
+
+- Dependência `notification_listener_service`.
+- **Novo** `transaction_ingest_service.dart` — ponto único onde SMS **e** push
+  viram transações: analisa o texto (`SmsParser`), **evita duplicados** pela
+  referência (`smsId`) e grava. `sms_service` foi simplificado para o usar.
+- **Novo** `bank_notification_service.dart` — subscreve
+  `NotificationListenerService.notificationsStream`, ignora notificações
+  removidas/persistentes, e passa `título + conteúdo` ao ingest. O parser é
+  restritivo (exige valor + verbo), por isso raramente apanha lixo.
+- `AndroidManifest.xml` — declara o `NotificationListener` service com
+  `BIND_NOTIFICATION_LISTENER_SERVICE`.
+- `settings_screen.dart` — tile **"Ler notificações bancárias"**: mostra o
+  estado e abre as Definições do Android para conceder o acesso.
+- `home_screen.dart` — arranca o listener no Android se a permissão já estiver
+  concedida.
+
+**Limitações:** funciona enquanto a app está viva (sem isolate de fundo
+dedicado); a origem fica marcada como `… · push`. iOS não permite ler
+notificações de outras apps.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK; corre no Linux sem erros (o listener é
+  ignorado fora do Android). Falta testar num Android real.

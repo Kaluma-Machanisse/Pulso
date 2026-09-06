@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io' show Platform;
 import '../services/sms_service.dart';
+import '../services/bank_notification_service.dart';
 import '../services/reminder_service.dart';
 import '../services/goal_reminder_service.dart';
 import '../services/goal_archive_service.dart';
@@ -42,6 +43,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // `permission_handler` não têm implementação para desktop/web).
       if (!kIsWeb && Platform.isAndroid) {
         await SmsService.initialize(ref);
+        await BankNotificationService.start(ref);
       }
       await ReminderService.checkAndNotify(ref);
 

@@ -1,7 +1,10 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_providers.dart';
 import '../services/backup_service.dart';
+import '../services/bank_notification_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -106,6 +109,10 @@ class SettingsScreen extends ConsumerWidget {
               ref.read(settingsProvider.notifier).setNotificationsEnabled(val);
             },
           ),
+          const Divider(),
+
+          // Leitura de notificações bancárias (Android)
+          const _BankNotifTile(),
         ],
       ),
     );
@@ -257,6 +264,66 @@ class _CurrencyDialogState extends State<_CurrencyDialog> {
           ? const Icon(Icons.check_circle, color: Colors.blue)
           : const Icon(Icons.circle_outlined),
       onTap: () => setState(() => _selected = value),
+    );
+  }
+}
+// ---------- Leitura de notificações bancárias ----------
+class _BankNotifTile extends ConsumerStatefulWidget {
+  const _BankNotifTile();
+
+  @override
+  ConsumerState<_BankNotifTile> createState() => _BankNotifTileState();
+}
+
+class _BankNotifTileState extends ConsumerState<_BankNotifTile> {
+  bool _ativo = false;
+  bool _carregado = false;
+
+  bool get _android => !kIsWeb && Platform.isAndroid;
+
+  @override
+  void initState() {
+    super.initState();
+    _atualizar();
+  }
+
+  Future<void> _atualizar() async {
+    final v = await BankNotificationService.isEnabled();
+    if (!mounted) return;
+    setState(() {
+      _ativo = v;
+      _carregado = true;
+    });
+  }
+
+  Future<void> _abrir() async {
+    await BankNotificationService.requestPermission();
+    await BankNotificationService.start(ref);
+    await _atualizar();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_android) {
+      return const ListTile(
+        leading: Icon(Icons.notifications_active_outlined),
+        title: Text('Ler notificações bancárias'),
+        subtitle: Text('Disponível apenas no Android'),
+        enabled: false,
+      );
+    }
+    return ListTile(
+      leading: const Icon(Icons.notifications_active_outlined),
+      title: const Text('Ler notificações bancárias'),
+      subtitle: Text(!_carregado
+          ? 'A verificar…'
+          : _ativo
+              ? 'Activo — notificações de apps de banco/carteira viram transações'
+              : 'Desligado — toca para dar acesso nas Definições do Android'),
+      trailing: _ativo
+          ? const Icon(Icons.check_circle, color: Colors.green)
+          : const Icon(Icons.chevron_right),
+      onTap: _abrir,
     );
   }
 }
