@@ -328,3 +328,11 @@ notificações de outras apps.
 - `dart analyze lib` → **No issues found**.
 - `flutter build linux --debug` OK; corre no Linux sem erros (o listener é
   ignorado fora do Android). Falta testar num Android real.
+
+---
+
+# Ordem dos separadores — Setembro 2026
+
+`home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de
+Objectivos), por ser o ecrã de uso mais frequente. Ordem actual: Tarefas ·
+Objectivos · Finanças · Estatísticas · Configurações.
