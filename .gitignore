@@ -26,6 +26,7 @@ migrate_working_dir/
 # Credenciais privadas (usar os ficheiros *.example.dart como modelo)
 lib/config/auth_config.dart
 lib/config/supabase_config.dart
+secrets.json
 
 # Arquivos comprimidos / backups locais
 *.zip

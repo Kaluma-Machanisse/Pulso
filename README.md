@@ -17,15 +17,22 @@ local (Drift) e sincronização opcional com Supabase.
 
 ## Arranque rápido
 
+Repositório público — **nenhum segredo fica em texto no código**. As
+credenciais entram por `--dart-define-from-file`:
+
 ```bash
-cp lib/config/auth_config.example.dart     lib/config/auth_config.dart
-cp lib/config/supabase_config.example.dart lib/config/supabase_config.dart
-# preencher os valores nos dois ficheiros (ou usar --dart-define)
+cp secrets.example.json secrets.json
+# preenche secrets.json com os teus valores (fica fora do git)
 
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
-flutter run
+flutter run --dart-define-from-file=secrets.json
 ```
+
+`lib/config/auth_config.dart` e `supabase_config.dart` são opcionais — só
+servem se preferires um ficheiro local em vez de `--dart-define` (ver os
+`*.example.dart` correspondentes). Ambas as formas ficam fora do controlo de
+versões (`.gitignore`).
 
 ## Documentação
 
