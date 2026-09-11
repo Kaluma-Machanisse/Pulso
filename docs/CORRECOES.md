@@ -331,6 +331,34 @@ notificações de outras apps.
 
 ---
 
+# Login real (sem credenciais embutidas) — Setembro 2026
+
+O repositório ficou público, o que tornava arriscado continuar com um login
+automático de credenciais fixas embutidas na app. Substituído por autenticação
+real:
+
+- **Novo** `login_screen.dart`: entrar / criar conta (Supabase Auth) com
+  validação, mensagens de erro legíveis, e botão **"Continuar sem conta"**
+  (a app funciona sempre offline com a BD local).
+- `auth_service.dart` reescrito: `signIn`/`signUp`/`signOut`/`isLoggedIn`/
+  `currentUser`. Sem `AuthConfig`, sem password nenhuma no código.
+- `splash_screen.dart`: já não faz login silencioso; só decide, ao fim da
+  animação, entre `HomeScreen` (sessão já activa — persistida pelo próprio
+  `supabase_flutter`) e `LoginScreen`.
+- `settings_screen.dart`: novo cartão de conta no topo — mostra o email
+  ligado, "Sair" (com confirmação) ou "Entrar".
+- Removidos `lib/config/auth_config.dart`/`.example.dart` e as chaves
+  `AUTH_EMAIL`/`AUTH_PASSWORD`. `secrets.example.json` fica só com
+  `SUPABASE_URL`/`SUPABASE_ANON_KEY` (não são segredo — RLS é a proteção real).
+- Password antiga (que esteve em texto no histórico do git) já tinha sido
+  rodada — ver `docs/SEGURANCA.md`.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+
+---
+
 # Ordem dos separadores — Setembro 2026
 
 `home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de

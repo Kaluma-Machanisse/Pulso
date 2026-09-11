@@ -1,31 +1,48 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../config/auth_config.dart';
 
+/// Autenticação real do Supabase — sem credenciais embutidas na app.
+/// O utilizador entra com o seu próprio email/password no [LoginScreen];
+/// a sessão fica guardada pelo próprio supabase_flutter entre arranques.
 class AuthService {
   static final _supabase = Supabase.instance.client;
 
-  /// Faz login silencioso com as credenciais fixas.
-  static Future<bool> signIn() async {
-    // Se já estiver logado e a sessão for válida, não faz nada.
-    final currentSession = _supabase.auth.currentSession;
-    if (currentSession != null && !currentSession.isExpired) {
-      return true;
-    }
+  static User? get currentUser => _supabase.auth.currentUser;
 
+  static bool get isLoggedIn {
+    final session = _supabase.auth.currentSession;
+    return session != null && !session.isExpired;
+  }
+
+  static Stream<AuthState> get onAuthStateChange =>
+      _supabase.auth.onAuthStateChange;
+
+  /// Devolve `null` em sucesso, ou uma mensagem de erro legível.
+  static Future<String?> signIn(String email, String password) async {
     try {
       await _supabase.auth
-          .signInWithPassword(
-            email: AuthConfig.email,
-            password: AuthConfig.password,
-          )
-          .timeout(const Duration(seconds: 8));
-      return true;
-    } catch (e) {
-      // Sem rede / Supabase indisponível: a app funciona na mesma offline
-      // com a base de dados local, por isso não bloqueamos o arranque.
-      debugPrint('Login automático falhou (a app continua offline): $e');
-      return false;
+          .signInWithPassword(email: email.trim(), password: password)
+          .timeout(const Duration(seconds: 12));
+      return null;
+    } on AuthException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'Não foi possível ligar ao servidor. Verifica a ligação e tenta novamente.';
     }
   }
+
+  /// Devolve `null` em sucesso, ou uma mensagem de erro legível.
+  static Future<String?> signUp(String email, String password) async {
+    try {
+      await _supabase.auth
+          .signUp(email: email.trim(), password: password)
+          .timeout(const Duration(seconds: 12));
+      return null;
+    } on AuthException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'Não foi possível ligar ao servidor. Verifica a ligação e tenta novamente.';
+    }
+  }
+
+  static Future<void> signOut() => _supabase.auth.signOut();
 }

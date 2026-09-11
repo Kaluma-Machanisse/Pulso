@@ -31,9 +31,8 @@ com sincronização opcional para Supabase.
 lib/
 ├─ main.dart                  Bootstrap: Supabase.initialize + Notificações + ProviderScope
 ├─ config/
-│  ├─ auth_config.dart          (GITIGNORED) credenciais do utilizador de serviço
-│  ├─ supabase_config.dart      (GITIGNORED) URL + anon key
-│  └─ *.example.dart            Modelos versionados
+│  ├─ supabase_config.dart      (GITIGNORED, opcional) URL + anon key — alternativa ao --dart-define
+│  └─ supabase_config.example.dart  Modelo versionado
 ├─ database/
 │  ├─ database.dart             Tabelas Drift + AppDatabase + MigrationStrategy
 │  └─ database.g.dart           GERADO por build_runner (não editar à mão)
@@ -139,7 +138,8 @@ Sempre que mudares colunas:
 
 | Ecrã | Tipo | Função |
 |---|---|---|
-| `splash_screen.dart` | Stateful | Delay 500ms → `AuthService.signIn()` → `HomeScreen` |
+| `splash_screen.dart` | Stateful | Animação do wordmark (~2,5s) → `AuthService.isLoggedIn` ? `HomeScreen` : `LoginScreen` |
+| `login_screen.dart` | Stateful | Entrar / criar conta (Supabase Auth) ou "Continuar sem conta" (só local) |
 | `home_screen.dart` | ConsumerStateful | `BottomNavigationBar` com 5 abas, ordem **Tarefas · Objectivos · Finanças · Estatísticas · Configurações**; no arranque chama `SmsService.initialize`, `BankNotificationService.start`, `ReminderService.checkAndNotify` e os `recompute`/`sweep`/`reschedule` de objectivos e tarefas |
 | `goals_screen.dart` | ConsumerWidget | Objectivos **activos** em **cartões** agrupados por prazo (Curto/Longo), ordenados pela data-alvo mais próxima. Cada cartão: faixa lateral com a **cor da importância**, **ponto de prazo** que muda de cor à medida que a data se aproxima (verde→amarelo→laranja→vermelho/atrasado), barra de progresso, contagem de dias, botão **Concluir** (põe a 100% → arquiva). Swipe ou menu (3 pontos) = eliminar; menu do AppBar → arquivados / relatórios. **Seleção múltipla**: toque longo (ou menu → Selecionar) abre o modo; AppBar contextual com contagem, selecionar todos e eliminar em lote |
 | `archived_goals_screen.dart` | ConsumerWidget | Objectivos concluídos (arquivados); toque = ver/editar, toque longo = apagar de vez |
@@ -183,7 +183,7 @@ Sempre que mudares colunas:
 
 | Serviço | Responsabilidade |
 |---|---|
-| `auth_service.dart` | `signIn()` — login silencioso com credenciais fixas; reusa a sessão se ainda válida |
+| `auth_service.dart` | `signIn()` / `signUp()` / `signOut()`, `isLoggedIn`, `currentUser` — Supabase Auth real, sem credenciais na app |
 | `notification_service.dart` | `initialize()` — canal Android + fuso horário (`Africa/Maputo`); `showNotification()` imediata; `scheduleAt()` agenda uma única no futuro (`zonedSchedule`, modo inexacto); `cancel()`/`cancelRange()` |
 | `goal_reminder_service.dart` | Agenda os lembretes de cada objectivo conforme a **importância** (1–4/semana) + 1 no dia da data-alvo; janela de 90 dias; `rescheduleForGoal`, `rescheduleAll` (arranque), `cancelForGoal` (ao eliminar). Ver §10 |
 | `goal_archive_service.dart` | Arquiva objectivos a 100% (`archivedAt`), desarquiva se o progresso descer; `apply()` / `sweep()` |
@@ -203,6 +203,15 @@ Sempre que mudares colunas:
 
 ## 7. Sincronização — estado actual e evolução
 
+### Autenticação
+
+- `login_screen.dart` + `auth_service.dart`: login/registo real com
+  email/password (Supabase Auth) — **sem credenciais embutidas na app**. A
+  sessão fica persistida pelo próprio `supabase_flutter`.
+- Sem conta ligada, a app funciona na mesma (BD local); só a sincronização
+  com o Supabase fica indisponível. Botão "Continuar sem conta" no login e
+  "Entrar" / "Sair" nas Configurações.
+
 ### Como funciona hoje (estratégia "mirror", app de utilizador único)
 
 - **Push** (`SyncService.pushAll`): para cada tabela, apaga tudo no Supabase e
@@ -220,27 +229,31 @@ Sempre que mudares colunas:
    está desligado — activá-lo faria o pull falhar em referências órfãs.
 2. **Mirror, não merge.** Não há resolução de conflitos: o último a
    sincronizar ganha. Editar em dois dispositivos perde dados.
-3. **Sem filtro por utilizador na app.** Todos entram na mesma conta Supabase
-   (`AuthConfig`), logo partilham as mesmas linhas.
+3. **Sem filtro por utilizador nas políticas RLS.** O login já é real e
+   individual (ver acima), mas as políticas em `docs/supabase_rls.sql` são
+   `to authenticated` — qualquer conta autenticada vê as mesmas linhas. Não é
+   risco enquanto só o dono usa a app; passa a ser quando houver mais do que
+   uma conta real a usar o mesmo projecto Supabase (ver plano abaixo).
 
-### Plano de evolução (quando for preciso multi-dispositivo real)
+### Plano de evolução (quando for preciso multi-dispositivo/multi-utilizador real)
 
 1. Adicionar coluna `uuid TEXT` (gerada no cliente, ex.: package `uuid`) às três
    tabelas → `schemaVersion = 2` + migração + `build_runner`.
 2. `upsert(..., onConflict: 'uuid')` no push; casar por `uuid` no pull.
 3. Guardar `updatedAt` e sincronizar só o que mudou (incremental).
 4. Reativar `PRAGMA foreign_keys = ON` e mapear `goalId` por `uuid`.
-5. Ecrã de login real (email/password do próprio utilizador) + RLS por `auth.uid()`.
+5. Adicionar `user_id uuid default auth.uid()` às tabelas no Supabase e trocar
+   as políticas de RLS para `user_id = auth.uid()` — cada conta só vê os seus
+   dados.
 
 ---
 
 ## 8. Build & execução
 
 ```bash
-# 1. Criar os ficheiros de config a partir dos modelos
-cp lib/config/auth_config.example.dart     lib/config/auth_config.dart
-cp lib/config/supabase_config.example.dart lib/config/supabase_config.dart
-#    ... e preencher os valores (ou passar por --dart-define)
+# 1. Ligação ao Supabase (URL + anon key — não é segredo, mas fica fora do git)
+cp secrets.example.json secrets.json
+#    ... preencher SUPABASE_URL e SUPABASE_ANON_KEY
 
 # 2. Dependências
 flutter pub get
@@ -248,18 +261,11 @@ flutter pub get
 # 3. Geração de código Drift (sempre que mudar database.dart)
 dart run build_runner build --delete-conflicting-outputs
 
-# 4. Correr
-flutter run                              # dispositivo/emulador ligado
-flutter run -d linux                     # desktop, útil para testar UI rápido
+# 4. Correr (login é feito no ecrã da app, com email/password reais)
+flutter run --dart-define-from-file=secrets.json
+flutter run -d linux --dart-define-from-file=secrets.json   # desktop, útil para testar UI rápido
 
-# 5. Com segredos injectados em vez de ficheiro
-flutter run \
-  --dart-define=AUTH_EMAIL=... \
-  --dart-define=AUTH_PASSWORD=... \
-  --dart-define=SUPABASE_URL=... \
-  --dart-define=SUPABASE_ANON_KEY=...
-
-# 6. Verificações
+# 5. Verificações
 dart analyze
 flutter test
 

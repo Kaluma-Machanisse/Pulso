@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme/pulso_theme.dart';
 import 'home_screen.dart';
+import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -45,19 +46,16 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initialize() async {
-    // O arranque nunca fica preso: o login tem timeout e, mesmo que falhe, a
-    // app abre (funciona offline com a base de dados local). Ao mesmo tempo,
-    // garante-se um mínimo de 2,5 s para a animação do splash correr toda.
-    await Future.wait([
-      Future.any([
-        AuthService.signIn(),
-        Future.delayed(const Duration(seconds: 6)),
-      ]),
-      Future.delayed(const Duration(milliseconds: 2500)),
-    ]);
+    // Mínimo de 2,5 s para a animação do splash correr toda.
+    await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
+
+    // Sessão do Supabase persiste entre arranques — se já estiveres ligado,
+    // entra direto; senão vai para o login (com opção de continuar offline).
+    final destino =
+        AuthService.isLoggedIn ? const HomeScreen() : const LoginScreen();
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(builder: (_) => destino),
     );
   }
 

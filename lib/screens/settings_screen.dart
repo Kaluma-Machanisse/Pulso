@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_providers.dart';
+import '../services/auth_service.dart';
 import '../services/backup_service.dart';
 import '../services/bank_notification_service.dart';
+import 'login_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -12,11 +14,56 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    final user = AuthService.currentUser;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Configurações')),
       body: ListView(
         children: [
+          // Conta
+          ListTile(
+            leading: Icon(user != null ? Icons.account_circle : Icons.no_accounts),
+            title: Text(user != null ? (user.email ?? 'Sessão activa') : 'Sem sessão'),
+            subtitle: Text(user != null
+                ? 'Ligado ao Supabase — a sincronização está disponível'
+                : 'Sem conta ligada — a app funciona só localmente'),
+            trailing: user != null
+                ? TextButton(
+                    onPressed: () async {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Sair da conta?'),
+                          content: const Text(
+                              'Os dados locais mantêm-se; deixas de sincronizar com o Supabase.'),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancelar')),
+                            TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Sair')),
+                          ],
+                        ),
+                      );
+                      if (ok != true) return;
+                      await AuthService.signOut();
+                      if (!context.mounted) return;
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    },
+                    child: const Text('Sair'),
+                  )
+                : TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const LoginScreen())),
+                    child: const Text('Entrar'),
+                  ),
+          ),
+          const Divider(),
+
           // Tema
           ListTile(
             leading: const Icon(Icons.brightness_6),
