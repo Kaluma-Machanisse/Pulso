@@ -28,8 +28,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
-    GoalsScreen(),
     TasksScreen(),
+    GoalsScreen(),
     FinanceScreen(),
     StatsScreen(),
     SettingsScreen(),  // <-- adicionado
@@ -99,12 +99,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.flag),
-            label: 'Objectivos',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.checklist),
             label: 'Tarefas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.flag),
+            label: 'Objectivos',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet),
