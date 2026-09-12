@@ -7,9 +7,9 @@ import '../services/goal_reminder_service.dart';
 import '../services/goal_archive_service.dart';
 import '../providers/database_provider.dart';
 import '../widgets/confirm_dialog.dart';
+import '../services/report_service.dart';
 import 'add_goal_screen.dart';
 import 'archived_goals_screen.dart';
-import 'reports_screen.dart';
 
 // ----- Cores por nível de importância -----
 Color importanceColor(String importance) {
@@ -123,22 +123,27 @@ class GoalsScreen extends ConsumerWidget {
             : AppBar(
                 title: const Text('Objectivos'),
                 actions: [
-                  PopupMenuButton<String>(
-                    onSelected: (value) {
-                      final page = value == 'arquivados'
-                          ? const ArchivedGoalsScreen()
-                          : const ReportsScreen();
-                      Navigator.of(context)
-                          .push(MaterialPageRoute(builder: (_) => page));
+                  IconButton(
+                    tooltip: 'Objectivos arquivados',
+                    icon: const Icon(Icons.archive_outlined),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const ArchivedGoalsScreen())),
+                  ),
+                  IconButton(
+                    tooltip: 'Gerar relatório deste mês',
+                    icon: const Icon(Icons.summarize_outlined),
+                    onPressed: () async {
+                      await ReportService.generateNowForCurrentMonth(ref);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                                'Relatório gerado. Vê em Estatísticas.'),
+                          ),
+                        );
+                      }
                     },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                          value: 'arquivados',
-                          child: Text('Objectivos arquivados')),
-                      PopupMenuItem(
-                          value: 'relatorios',
-                          child: Text('Relatórios mensais')),
-                    ],
                   ),
                 ],
               ),

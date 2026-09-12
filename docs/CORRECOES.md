@@ -575,3 +575,39 @@ painel de filtros primeiro.
 `home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de
 Objectivos), por ser o ecrã de uso mais frequente. Ordem actual: Tarefas ·
 Objectivos · Finanças · Estatísticas · Configurações.
+
+---
+
+# Carteira, Objectivos e Relatórios: melhorias diversas — Setembro 2026
+
+- **Orçamentos visíveis na Carteira**: em vez de só um aviso quando um
+  orçamento é ultrapassado, `finance_screen.dart` mostra sempre uma secção
+  "Orçamentos" com barra de progresso (gasto/limite) por categoria
+  (`_BudgetSummary`), tocável para abrir a tela de orçamentos.
+- **Categoria personalizada ao escolher "Outro"**: `add_transaction_screen.dart`
+  passa a pedir o nome do tipo de gasto quando a categoria é "Outro"; esse
+  nome torna-se a categoria real da transação, entrando automaticamente nos
+  gráficos e orçamentos existentes (que já agrupam por qualquer categoria).
+- **Objectivos**: menu escondido substituído por dois ícones directos no
+  AppBar — arquivo (`ArchivedGoalsScreen`) e "gerar relatório do mês"
+  (`ReportService.generateNowForCurrentMonth`, gera/actualiza já o relatório
+  do mês corrente sem esperar pelo início do mês seguinte).
+- **Relatórios centralizados em Estatísticas**: novo ícone em
+  `stats_screen.dart` abre a lista de relatórios mensais; removido o acesso
+  duplicado que estava no menu da Carteira.
+- **Estatísticas — gastos por semana**: novo gráfico de barras
+  (`weeklySpendProvider`) com os gastos do mês corrente agrupados por blocos
+  de 7 dias, destacando a semana de pico, mais um resumo rápido ("Esta
+  semana" / "Este mês até agora").
+- **Relatório financeiro — dia de maior gasto**: `FinancialReport` passa a
+  guardar `picoDia`/`picoValor` (dia do mês com maior despesa), calculado em
+  `ReportService.buildFinancialForMonth` e mostrado no detalhe do relatório,
+  na lista e no PDF exportado. Compatível com relatórios antigos (campo
+  opcional no JSON).
+- **Lista de relatórios**: seta (chevron) adicionada ao lado do botão de PDF
+  para deixar claro que tocar na linha abre o detalhe dentro da app.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter run -d linux` OK, sem excepções nos logs.

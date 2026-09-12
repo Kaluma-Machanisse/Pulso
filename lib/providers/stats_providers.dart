@@ -20,6 +20,31 @@ final monthlyStatsProvider = StreamProvider<Map<String, Map<String, double>>>((r
   });
 });
 
+/// Gastos do mês corrente agrupados por semana (semana 1 = dias 1-7, etc.),
+/// para identificar o pico de despesa dentro do mês.
+class WeekSpend {
+  final int semana; // 1..5
+  final double total;
+  WeekSpend(this.semana, this.total);
+}
+
+final weeklySpendProvider = StreamProvider<List<WeekSpend>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.select(db.transactions).watch().map((txList) {
+    final now = DateTime.now();
+    final Map<int, double> porSemana = {};
+    for (final tx in txList) {
+      if (tx.type != 'despesa') continue;
+      if (tx.date.year != now.year || tx.date.month != now.month) continue;
+      final semana = ((tx.date.day - 1) ~/ 7) + 1;
+      porSemana[semana] = (porSemana[semana] ?? 0) + tx.amount;
+    }
+    final lista = porSemana.entries.map((e) => WeekSpend(e.key, e.value)).toList()
+      ..sort((a, b) => a.semana.compareTo(b.semana));
+    return lista;
+  });
+});
+
 // Progresso dos objectivos (lista simples)
 final goalsProgressProvider = StreamProvider<List<Goal>>((ref) {
   final db = ref.watch(databaseProvider);

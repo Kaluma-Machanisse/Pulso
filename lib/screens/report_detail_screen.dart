@@ -127,6 +127,30 @@ class _Financeiro extends StatelessWidget {
         const SizedBox(height: 8),
         Text('$moeda · ${fin.nTransacoes} transações no mês',
             style: Theme.of(context).textTheme.bodySmall),
+        if (fin.picoDia != null) ...[
+          const SizedBox(height: 12),
+          Card(
+            color: SemanticColors.despesa.withValues(alpha: 0.08),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  const Icon(Icons.trending_up,
+                      color: SemanticColors.despesa),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Dia de maior gasto: '
+                      '${fin.picoDia!.day}/${fin.picoDia!.month} · '
+                      '${fin.picoValor.toStringAsFixed(0)} $moeda',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
         Text('Despesas por categoria',
             style: Theme.of(context).textTheme.titleMedium),

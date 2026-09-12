@@ -106,6 +106,8 @@ class FinancialReport {
   final double despesas;
   final int nTransacoes;
   final List<MapEntry<String, double>> despesasPorCategoria; // maior primeiro
+  final DateTime? picoDia; // dia com maior despesa no mês
+  final double picoValor;
 
   FinancialReport({
     required this.month,
@@ -114,6 +116,8 @@ class FinancialReport {
     required this.despesas,
     required this.nTransacoes,
     required this.despesasPorCategoria,
+    this.picoDia,
+    this.picoValor = 0,
   });
 
   double get saldo => receitas - despesas;
@@ -128,6 +132,8 @@ class FinancialReport {
           for (final e in despesasPorCategoria)
             {'categoria': e.key, 'valor': e.value}
         ],
+        'pico_dia': picoDia?.toIso8601String(),
+        'pico_valor': picoValor,
       };
 
   factory FinancialReport.fromJson(Map<String, dynamic> j) => FinancialReport(
@@ -140,6 +146,10 @@ class FinancialReport {
           for (final e in (j['por_categoria'] as List? ?? []))
             MapEntry(e['categoria'] as String, (e['valor'] as num).toDouble())
         ],
+        picoDia: j['pico_dia'] != null
+            ? DateTime.parse(j['pico_dia'] as String)
+            : null,
+        picoValor: (j['pico_valor'] as num?)?.toDouble() ?? 0,
       );
 }
 
@@ -192,16 +202,28 @@ class ReportService {
 
     double receitas = 0, despesas = 0;
     final Map<String, double> cat = {};
+    final Map<DateTime, double> porDia = {};
     for (final t in txs) {
       if (t.type == 'receita') {
         receitas += t.amount;
       } else {
         despesas += t.amount;
         cat[t.category] = (cat[t.category] ?? 0) + t.amount;
+        final dia = DateTime(t.date.year, t.date.month, t.date.day);
+        porDia[dia] = (porDia[dia] ?? 0) + t.amount;
       }
     }
     final porCat = cat.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
+
+    DateTime? picoDia;
+    double picoValor = 0;
+    for (final e in porDia.entries) {
+      if (e.value > picoValor) {
+        picoValor = e.value;
+        picoDia = e.key;
+      }
+    }
 
     return FinancialReport(
       month: monthKey(start),
@@ -210,6 +232,8 @@ class ReportService {
       despesas: despesas,
       nTransacoes: txs.length,
       despesasPorCategoria: porCat,
+      picoDia: picoDia,
+      picoValor: picoValor,
     );
   }
 
@@ -264,6 +288,38 @@ class ReportService {
 
       cursor = DateTime(cursor.year, cursor.month + 1);
     }
+  }
+
+  /// Gera (ou regenera) já o relatório do mês corrente, objectivos e
+  /// finanças, substituindo qualquer versão anterior desse mês.
+  static Future<void> generateNowForCurrentMonth(WidgetRef ref) async {
+    final db = ref.read(databaseProvider);
+    final now = DateTime.now();
+    final key = monthKey(now);
+
+    await (db.delete(db.reports)
+          ..where((r) => r.month.equals(key))
+          ..where((r) => r.type.equals(kObjectivos)))
+        .go();
+    final rg = await buildForMonth(db, now.year, now.month);
+    await db.into(db.reports).insert(ReportsCompanion(
+          month: Value(key),
+          type: const Value(kObjectivos),
+          generatedAt: Value(DateTime.now()),
+          dataJson: Value(jsonEncode(rg.toJson())),
+        ));
+
+    await (db.delete(db.reports)
+          ..where((r) => r.month.equals(key))
+          ..where((r) => r.type.equals(kFinanceiro)))
+        .go();
+    final rf = await buildFinancialForMonth(db, now.year, now.month);
+    await db.into(db.reports).insert(ReportsCompanion(
+          month: Value(key),
+          type: const Value(kFinanceiro),
+          generatedAt: Value(DateTime.now()),
+          dataJson: Value(jsonEncode(rf.toJson())),
+        ));
   }
 
   static MonthlyReport parse(Report row) =>

@@ -9,7 +9,6 @@ import '../theme/semantic_colors.dart';
 import '../widgets/confirm_dialog.dart';
 import 'add_transaction_screen.dart';
 import 'budgets_screen.dart';
-import 'reports_screen.dart';
 
 class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
@@ -76,20 +75,10 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                 : const Icon(Icons.sync),
             onPressed: _syncing ? null : _sincronizar,
           ),
-          PopupMenuButton<String>(
-            onSelected: (v) {
-              if (v == 'orcamentos') {
-                _abrirOrcamentos();
-              } else if (v == 'relatorios') {
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const ReportsScreen()));
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'orcamentos', child: Text('Orçamentos')),
-              PopupMenuItem(
-                  value: 'relatorios', child: Text('Relatórios mensais')),
-            ],
+          IconButton(
+            tooltip: 'Orçamentos',
+            icon: const Icon(Icons.pie_chart_outline),
+            onPressed: _abrirOrcamentos,
           ),
         ],
       ),
@@ -146,6 +135,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                 onTap: _abrirOrcamentos,
               ),
             ),
+
+          _BudgetSummary(moeda: moeda, onTap: _abrirOrcamentos),
 
           // Mini-gráfico: gastos do mês por categoria
           if (gastosMes.isNotEmpty)
@@ -319,6 +310,80 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
         ),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class _BudgetSummary extends ConsumerWidget {
+  final String moeda;
+  final VoidCallback onTap;
+
+  const _BudgetSummary({required this.moeda, required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(budgetStatusProvider);
+    if (status.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('Orçamentos',
+                    style: Theme.of(context).textTheme.labelLarge),
+                const Spacer(),
+                Icon(Icons.chevron_right, color: scheme.outline, size: 18),
+              ],
+            ),
+            const SizedBox(height: 6),
+            for (final s in status)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 90,
+                      child: Text(s.budget.category,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12)),
+                    ),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: s.pct.clamp(0, 1),
+                          minHeight: 10,
+                          backgroundColor: scheme.surfaceContainerHighest,
+                          color: s.over ? scheme.error : scheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 90,
+                      child: Text(
+                        '${s.spent.toStringAsFixed(0)}/${s.limit.toStringAsFixed(0)} $moeda',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: s.over ? scheme.error : null,
+                          fontWeight: s.over ? FontWeight.bold : null,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -21,6 +21,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   late String _type;
   late String _category;
   late DateTime _date;
+  late TextEditingController _customCategoryController;
+
+  static const String _outroValue = 'Outro';
 
   final List<String> _categories = [
     'Geral',
@@ -34,6 +37,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     'Outro',
   ];
 
+  bool get _isCustomCategory =>
+      _category == _outroValue || !_categories.contains(_category);
+
   @override
   void initState() {
     super.initState();
@@ -43,20 +49,33 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     _descriptionController =
         TextEditingController(text: tx?.description ?? '');
     _type = tx?.type ?? 'despesa';
-    _category = tx?.category ?? 'Geral';
     _date = tx?.date ?? DateTime.now();
-    if (!_categories.contains(_category)) _categories.add(_category);
+    final categoriaExistente = tx?.category ?? 'Geral';
+    if (categoriaExistente != _outroValue &&
+        !_categories.contains(categoriaExistente)) {
+      // Categoria personalizada criada anteriormente: editar directamente o nome.
+      _category = _outroValue;
+      _customCategoryController =
+          TextEditingController(text: categoriaExistente);
+    } else {
+      _category = categoriaExistente;
+      _customCategoryController = TextEditingController();
+    }
   }
 
   @override
   void dispose() {
     _amountController.dispose();
     _descriptionController.dispose();
+    _customCategoryController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    final categoriaFinal = _isCustomCategory
+        ? _customCategoryController.text.trim()
+        : _category;
     final amount = double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0;
     final desc = _descriptionController.text.isNotEmpty
         ? Value(_descriptionController.text)
@@ -66,7 +85,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       await ref.read(addTransactionProvider(TransactionsCompanion(
         amount: Value(amount),
         type: Value(_type),
-        category: Value(_category),
+        category: Value(categoriaFinal),
         description: desc,
         date: Value(_date),
         source: const Value('manual'),
@@ -75,7 +94,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       await ref.read(updateTransactionProvider(widget.tx!.copyWith(
         amount: amount,
         type: _type,
-        category: _category,
+        category: categoriaFinal,
         description: desc,
         date: _date,
       )).future);
@@ -133,6 +152,20 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               onChanged: (val) => setState(() => _category = val!),
               decoration: const InputDecoration(labelText: 'Categoria'),
             ),
+            if (_isCustomCategory) ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _customCategoryController,
+                decoration: const InputDecoration(
+                  labelText: 'Nome do tipo de gasto *',
+                  helperText:
+                      'Este nome vai aparecer nos gráficos e orçamentos',
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Indica um nome para esta categoria'
+                    : null,
+              ),
+            ],
             const SizedBox(height: 16),
             TextFormField(
               controller: _descriptionController,

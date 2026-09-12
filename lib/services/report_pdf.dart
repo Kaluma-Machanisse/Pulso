@@ -249,6 +249,17 @@ class ReportPdf {
         pw.SizedBox(height: 6),
         pw.Text('${r.nTransacoes} transações no mês',
             style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+        if (r.picoDia != null) ...[
+          pw.SizedBox(height: 4),
+          pw.Text(
+            'Dia de maior gasto: ${r.picoDia!.day}/${r.picoDia!.month} · '
+            '${r.picoValor.toStringAsFixed(0)} $moeda',
+            style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.red700),
+          ),
+        ],
         pw.SizedBox(height: 20),
         pw.Text('Despesas por categoria',
             style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),

@@ -7,6 +7,7 @@ import '../providers/transaction_providers.dart';
 import '../providers/settings_providers.dart';
 import '../services/sync_service.dart';
 import '../theme/semantic_colors.dart';
+import 'reports_screen.dart';
 
 enum _TipoGrafico { barras, circular }
 
@@ -24,6 +25,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     final monthlyStatsAsync = ref.watch(monthlyStatsProvider);
+    final weeklySpendAsync = ref.watch(weeklySpendProvider);
     final goalsProgressAsync = ref.watch(goalsProgressProvider);
     final balanceAsync = ref.watch(balanceProvider);
     final moeda = ref.watch(settingsProvider).currency;
@@ -33,6 +35,12 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       appBar: AppBar(
         title: const Text('Estatísticas'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.description_outlined),
+            tooltip: 'Relatórios mensais',
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ReportsScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.cloud_download),
             tooltip: 'Restaurar dados do Supabase',
@@ -238,6 +246,144 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             ),
             const SizedBox(height: 28),
 
+            // ---- Gastos por semana (pico do mês) ----
+            Text('Gastos por semana (este mês)',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 16, 16, 12),
+                child: weeklySpendAsync.when(
+                  data: (semanas) {
+                    if (semanas.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                            child: Text('Sem despesas registadas este mês.')),
+                      );
+                    }
+                    final pico = semanas.reduce(
+                        (a, b) => a.total >= b.total ? a : b);
+                    final maiorValor = pico.total;
+                    final semanaActual = ((DateTime.now().day - 1) ~/ 7) + 1;
+                    final gastoSemanaActual = semanas
+                        .firstWhere(
+                          (s) => s.semana == semanaActual,
+                          orElse: () => WeekSpend(semanaActual, 0),
+                        )
+                        .total;
+                    final gastoMesTotal =
+                        semanas.fold<double>(0, (s, e) => s + e.total);
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _MiniResumo(
+                                label: 'Esta semana',
+                                valor:
+                                    '${gastoSemanaActual.toStringAsFixed(0)} $moeda',
+                              ),
+                            ),
+                            Expanded(
+                              child: _MiniResumo(
+                                label: 'Este mês (até agora)',
+                                valor:
+                                    '${gastoMesTotal.toStringAsFixed(0)} $moeda',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 180,
+                          child: BarChart(
+                            BarChartData(
+                              alignment: BarChartAlignment.spaceAround,
+                              maxY: maiorValor == 0 ? 1 : maiorValor * 1.15,
+                              gridData: FlGridData(
+                                drawVerticalLine: false,
+                                horizontalInterval:
+                                    maiorValor == 0 ? 1 : (maiorValor * 1.15) / 4,
+                                getDrawingHorizontalLine: (_) => FlLine(
+                                  color: scheme.outlineVariant,
+                                  strokeWidth: 1,
+                                ),
+                              ),
+                              borderData: FlBorderData(show: false),
+                              barGroups: semanas
+                                  .map((s) => BarChartGroupData(
+                                        x: s.semana,
+                                        barRods: [
+                                          BarChartRodData(
+                                            toY: s.total,
+                                            width: 22,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                            color: s.semana == pico.semana
+                                                ? SemanticColors.despesa
+                                                : scheme.primary,
+                                          ),
+                                        ],
+                                      ))
+                                  .toList(),
+                              titlesData: FlTitlesData(
+                                leftTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    reservedSize: 40,
+                                    getTitlesWidget: (value, meta) => Text(
+                                      value.toStringAsFixed(0),
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: scheme.onSurfaceVariant),
+                                    ),
+                                  ),
+                                ),
+                                bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(
+                                    showTitles: true,
+                                    getTitlesWidget: (value, meta) => Text(
+                                      'Sem ${value.toInt()}',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: scheme.onSurfaceVariant),
+                                    ),
+                                  ),
+                                ),
+                                rightTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                                topTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.trending_up,
+                                size: 16, color: SemanticColors.despesa),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Pico: semana ${pico.semana} · '
+                              '${pico.total.toStringAsFixed(0)} $moeda',
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('Erro: $e')),
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+
             // ---- Progresso dos objectivos ----
             Row(
               children: [
@@ -376,6 +522,28 @@ class _StatCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MiniResumo extends StatelessWidget {
+  final String label;
+  final String valor;
+  const _MiniResumo({required this.label, required this.valor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 2),
+        Text(valor,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }

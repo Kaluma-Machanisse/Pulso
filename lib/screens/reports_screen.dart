@@ -55,8 +55,9 @@ class ReportsScreen extends ConsumerWidget {
 
               if (fin) {
                 final r = ReportService.parseFinancial(row);
-                subtitle =
-                    'saldo ${r.saldo.toStringAsFixed(0)} $moeda · ${r.nTransacoes} transações';
+                subtitle = 'saldo ${r.saldo.toStringAsFixed(0)} $moeda · '
+                    '${r.nTransacoes} transações'
+                    '${r.picoDia != null ? ' · pico ${r.picoDia!.day}/${r.picoDia!.month}' : ''}';
                 abrirDetalhe = () => Navigator.of(context).push(
                     MaterialPageRoute(
                         builder: (_) => ReportDetailScreen(financial: r)));
@@ -76,10 +77,16 @@ class ReportsScreen extends ConsumerWidget {
                 title: Text('${fin ? 'Finanças' : 'Objectivos'} · '
                     '${tituloMes(row.month)}'),
                 subtitle: Text(subtitle),
-                trailing: IconButton(
-                  icon: const Icon(Icons.picture_as_pdf),
-                  tooltip: 'Exportar PDF',
-                  onPressed: exportar,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.picture_as_pdf),
+                      tooltip: 'Exportar PDF',
+                      onPressed: exportar,
+                    ),
+                    const Icon(Icons.chevron_right),
+                  ],
                 ),
                 onTap: abrirDetalhe,
                 onLongPress: () async {
