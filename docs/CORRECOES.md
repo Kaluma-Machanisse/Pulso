@@ -436,6 +436,27 @@ percentagem de dias marcados.
 
 ---
 
+# Editar tarefas: trocar entre normal e hábito — Setembro 2026
+
+`add_task_screen.dart`: o interruptor **"Tarefa-hábito"** deixa de ficar
+bloqueado ao editar — dá para converter numa direcção ou noutra depois de a
+tarefa já existir.
+
+- **Normal → hábito**: pede início/fim/hora (com valores por omissão),
+  `isCompleted` reinicia a `false`.
+- **Hábito → normal**: pede confirmação (o histórico de check-ins vai ser
+  apagado), depois `HabitService.limparCheckins` remove os registos e a
+  tarefa passa a ter data de vencimento normal.
+- `TaskReminderService.rescheduleAll` já cancelava e reagendava os dois tipos
+  de lembrete, por isso a troca fica logo com os lembretes certos.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK. Sem alteração de schema.
+
+---
+
 # Ordem dos separadores — Setembro 2026
 
 `home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de

@@ -67,6 +67,13 @@ class HabitService {
     return marcado;
   }
 
+  /// Apaga todos os check-ins de uma tarefa (usado quando deixa de ser hábito).
+  static Future<void> limparCheckins(WidgetRef ref, int taskId) async {
+    final db = ref.read(databaseProvider);
+    await (db.delete(db.habitCheckins)..where((c) => c.taskId.equals(taskId)))
+        .go();
+  }
+
   /// Fecha sozinho os hábitos cujo período já terminou: marca `habitClosed`
   /// e `isCompleted`, e actualiza o objectivo ligado com o resultado final.
   static Future<void> sweepClose(WidgetRef ref) async {

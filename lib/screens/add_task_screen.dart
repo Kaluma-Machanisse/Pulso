@@ -6,6 +6,7 @@ import '../providers/task_providers.dart';
 import '../providers/goal_providers.dart';
 import '../services/goal_progress_service.dart';
 import '../services/task_reminder_service.dart';
+import '../services/habit_service.dart';
 
 class AddTaskScreen extends ConsumerStatefulWidget {
   final Task? task;
@@ -69,6 +70,9 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
     }
 
     final oldGoalId = widget.task?.goalId;
+    final eraHabit = widget.task?.isHabit ?? false;
+    final tornouSeNormal = eraHabit && !_isHabit;
+    final tornouSeHabito = !eraHabit && _isHabit;
 
     if (widget.task == null) {
       final newTask = TasksCompanion.insert(
@@ -98,14 +102,22 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
         ),
         priority: _priority,
         dueDate: Value<DateTime?>(_isHabit ? null : _dueDate),
-        isCompleted: _isHabit ? widget.task!.isCompleted : _completed,
+        isCompleted: _isHabit
+            ? (tornouSeHabito ? false : widget.task!.isCompleted)
+            : _completed,
         goalId: Value<int?>(_goalId),
+        isHabit: _isHabit,
         habitStartDate: Value<DateTime?>(_isHabit ? _habitStart : null),
         habitEndDate: Value<DateTime?>(_isHabit ? _habitEnd : null),
         reminderHour: Value<int?>(_isHabit ? _reminderTime.hour : null),
         reminderMinute: Value<int?>(_isHabit ? _reminderTime.minute : null),
+        habitClosed: tornouSeHabito ? false : widget.task!.habitClosed,
       );
       await ref.read(updateTaskProvider(updatedTask).future);
+
+      if (tornouSeNormal) {
+        await HabitService.limparCheckins(ref, widget.task!.id);
+      }
     }
 
     // Actualiza o progresso do(s) objectivo(s) afectado(s) e reagenda os
@@ -149,7 +161,6 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
   @override
   Widget build(BuildContext context) {
     final goalsAsync = ref.watch(goalsProvider);
-    final podeMudarTipo = widget.task == null; // só ao criar
 
     return Scaffold(
       appBar: AppBar(
@@ -209,9 +220,29 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
               subtitle: const Text(
                   'Check-in diário durante um período, em vez de uma data única'),
               value: _isHabit,
-              onChanged: podeMudarTipo
-                  ? (v) => setState(() => _isHabit = v)
-                  : null,
+              onChanged: (v) async {
+                final eraHabitJaGuardado = widget.task?.isHabit ?? false;
+                if (!v && eraHabitJaGuardado) {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Deixar de ser hábito?'),
+                      content: const Text(
+                          'O histórico de check-ins deste hábito é apagado ao guardar. Continuar?'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancelar')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Continuar')),
+                      ],
+                    ),
+                  );
+                  if (ok != true) return;
+                }
+                setState(() => _isHabit = v);
+              },
             ),
 
             if (_isHabit) ...[
