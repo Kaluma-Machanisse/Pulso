@@ -31,3 +31,11 @@ final tasksByGoalProvider = StreamProvider.family<List<Task>, int>((ref, goalId)
   final db = ref.watch(databaseProvider);
   return (db.select(db.tasks)..where((t) => t.goalId.equals(goalId))).watch();
 });
+
+// Check-ins de uma tarefa-hábito (stream reativa)
+final habitCheckinsProvider =
+    StreamProvider.family<List<HabitCheckin>, int>((ref, taskId) {
+  final db = ref.watch(databaseProvider);
+  return (db.select(db.habitCheckins)..where((c) => c.taskId.equals(taskId)))
+      .watch();
+});

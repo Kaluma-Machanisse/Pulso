@@ -1,16 +1,36 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../database/database.dart';
 import '../providers/database_provider.dart';
 import 'goal_archive_service.dart';
 import 'goal_reminder_service.dart';
 
+DateTime _dia(DateTime d) => DateTime(d.year, d.month, d.day);
+
 /// Progresso automático dos objectivos a partir das tarefas ligadas.
 ///
-///   progresso = tarefas concluídas ÷ tarefas totais do objectivo  (arredondado)
+///   progresso = média da "percentagem" de cada tarefa
+///
+/// Tarefa normal: 0% ou 100% (isCompleted). Tarefa-hábito: dias com
+/// check-in ÷ dias do período (mesmo enquanto ainda está a decorrer).
 ///
 /// Se o objectivo não tiver nenhuma tarefa ligada, o progresso mantém-se
 /// manual (o que estiver guardado / o slider).
 class GoalProgressService {
   GoalProgressService._();
+
+  static Future<double> _percentTarefa(AppDatabase db, Task t) async {
+    if (!t.isHabit) return t.isCompleted ? 100 : 0;
+    if (t.habitStartDate == null || t.habitEndDate == null) {
+      return t.isCompleted ? 100 : 0;
+    }
+    final totalDias =
+        _dia(t.habitEndDate!).difference(_dia(t.habitStartDate!)).inDays + 1;
+    if (totalDias <= 0) return 0;
+    final feitos = await (db.select(db.habitCheckins)
+          ..where((c) => c.taskId.equals(t.id)))
+        .get();
+    return (feitos.length / totalDias * 100).clamp(0, 100);
+  }
 
   /// Recalcula o progresso de um objectivo a partir das suas tarefas.
   /// Se chegar a 100%, o objectivo é arquivado; se descer, é desarquivado.
@@ -26,8 +46,11 @@ class GoalProgressService {
         await (db.select(db.tasks)..where((t) => t.goalId.equals(goalId))).get();
     if (tasks.isEmpty) return; // sem tarefas → progresso continua manual
 
-    final done = tasks.where((t) => t.isCompleted).length;
-    final pct = (done / tasks.length * 100).round();
+    double soma = 0;
+    for (final t in tasks) {
+      soma += await _percentTarefa(db, t);
+    }
+    final pct = (soma / tasks.length).round();
 
     var atual = goal;
     if (pct != goal.progressPercentage) {

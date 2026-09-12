@@ -359,6 +359,51 @@ real:
 
 ---
 
+# Tarefas-hábito (check-in diário) — Setembro 2026
+
+Novo tipo de tarefa: em vez de uma data de vencimento única, tem um
+**período** (início→fim) e pede um **check-in diário**; o progresso é a
+percentagem de dias marcados.
+
+## Base de dados (schema v4 → v5)
+
+- `Tasks`: `isHabit`, `habitStartDate`, `habitEndDate`, `reminderHour`,
+  `reminderMinute`, `habitClosed`.
+- Nova tabela `HabitCheckins` (`taskId`, `date`, `createdAt`) — um registo por
+  dia marcado.
+
+## Serviços
+
+- **Novo** `habit_service.dart`: `totalDias`, `diasFeitos`, `percent`,
+  `feitoHoje`, `alternarHoje` (marca/desmarca o dia de hoje e recalcula o
+  objectivo ligado), `sweepClose` (fecha sozinho os hábitos cujo período já
+  terminou: `habitClosed = true`, `isCompleted = true`, cancela lembretes).
+- `task_reminder_service.dart`: agenda uma notificação por dia à hora
+  escolhida, do hoje até ao fim do período (janela rolante de 90 dias, como
+  os objectivos). Faixa de ids própria (`700000 + taskId*100`) para não
+  colidir com os lembretes de vencimento.
+- `goal_progress_service.dart` **reescrito**: o progresso de um objectivo
+  passa a ser a **média da percentagem de cada tarefa** — tarefa normal conta
+  0/100%, tarefa-hábito conta a sua própria percentagem (mesmo antes de
+  fechar). Antes era só "concluídas ÷ total".
+
+## UI
+
+- `add_task_screen.dart`: interruptor **"Tarefa-hábito"** (só ao criar) que
+  troca a data única por **início**, **fim** e **hora do lembrete diário**.
+- `tasks_screen.dart`: hábitos activos têm secção própria no topo
+  ("Hábitos"), cartão com barra de progresso, "X de Y dias" e botão
+  **"Marcar hoje"** / **"Feito hoje"**; hábitos fechados aparecem em
+  "Concluídas" com o resultado final riscado.
+- `home_screen.dart`: `HabitService.sweepClose` no arranque.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK; migração v4→v5 testada a correr no Linux.
+
+---
+
 # Ordem dos separadores — Setembro 2026
 
 `home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de

@@ -7,6 +7,7 @@ import '../providers/task_filter_provider.dart';
 import '../providers/task_selection_provider.dart';
 import '../services/goal_progress_service.dart';
 import '../services/task_reminder_service.dart';
+import '../services/habit_service.dart';
 import '../widgets/confirm_dialog.dart';
 import 'add_task_screen.dart';
 
@@ -172,9 +173,18 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                     );
                   }
 
-                  // Concluídas visíveis → grupo próprio no fim.
-                  final pendentes =
-                      list.where((t) => !t.isCompleted).toList();
+                  // Hábitos activos ficam à parte (não têm data única).
+                  final habitosActivos = list
+                      .where((t) => t.isHabit && !t.habitClosed)
+                      .toList()
+                    ..sort((a, b) => (a.habitEndDate ?? DateTime(9999))
+                        .compareTo(b.habitEndDate ?? DateTime(9999)));
+
+                  // Concluídas visíveis → grupo próprio no fim (inclui
+                  // hábitos já fechados).
+                  final pendentes = list
+                      .where((t) => !t.isHabit && !t.isCompleted)
+                      .toList();
                   final concluidas =
                       list.where((t) => t.isCompleted).toList();
 
@@ -187,27 +197,35 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         .compareTo(b.dueDate ?? DateTime(9999)));
                   }
 
+                  Widget cardPara(Task t) => t.isHabit
+                      ? _HabitCard(
+                          task: t,
+                          goalName: goalName[t.goalId],
+                          selecting: selecting,
+                          selected: selected.contains(t.id),
+                        )
+                      : _TaskCard(
+                          task: t,
+                          goalName: goalName[t.goalId],
+                          selecting: selecting,
+                          selected: selected.contains(t.id),
+                        );
+
                   return ListView(
                     padding: const EdgeInsets.only(bottom: 88, top: 4),
                     children: [
+                      if (habitosActivos.isNotEmpty) ...[
+                        _SectionHeader('Hábitos'),
+                        ...habitosActivos.map(cardPara),
+                      ],
                       for (final nome in _grupoOrdem)
                         if (grupos[nome] != null) ...[
                           _SectionHeader(nome),
-                          ...grupos[nome]!.map((t) => _TaskCard(
-                                task: t,
-                                goalName: goalName[t.goalId],
-                                selecting: selecting,
-                                selected: selected.contains(t.id),
-                              )),
+                          ...grupos[nome]!.map(cardPara),
                         ],
                       if (concluidas.isNotEmpty) ...[
                         _SectionHeader('Concluídas (${concluidas.length})'),
-                        ...concluidas.map((t) => _TaskCard(
-                              task: t,
-                              goalName: goalName[t.goalId],
-                              selecting: selecting,
-                              selected: selected.contains(t.id),
-                            )),
+                        ...concluidas.map(cardPara),
                       ],
                     ],
                   );
@@ -524,6 +542,224 @@ class _Pill extends StatelessWidget {
       child: Text(text,
           style: TextStyle(
               fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+    );
+  }
+}
+
+class _HabitCard extends ConsumerWidget {
+  final Task task;
+  final String? goalName;
+  final bool selecting;
+  final bool selected;
+
+  const _HabitCard({
+    required this.task,
+    this.goalName,
+    this.selecting = false,
+    this.selected = false,
+  });
+
+  void _toggleSel(WidgetRef ref) =>
+      ref.read(taskSelectionProvider.notifier).toggle(task.id);
+
+  Future<void> _delete(WidgetRef ref) async {
+    await ref.read(deleteTaskProvider(task.id).future);
+    await TaskReminderService.cancelForTask(task.id);
+    await GoalProgressService.recompute(ref, task.goalId);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final cor = priorityColor(task.priority);
+    final checkinsAsync = ref.watch(habitCheckinsProvider(task.id));
+    final checkins = checkinsAsync.valueOrNull ?? const [];
+
+    final totalDias = HabitService.totalDias(task);
+    final feitos = checkins.length;
+    final pct = totalDias <= 0 ? 0 : ((feitos / totalDias) * 100).round();
+    final hoje = DateTime(
+        DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final feitoHoje = checkins.any((c) =>
+        c.date.year == hoje.year &&
+        c.date.month == hoje.month &&
+        c.date.day == hoje.day);
+
+    final card = Card(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: selected ? scheme.primary : scheme.outlineVariant,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      color: selected ? scheme.primary.withValues(alpha: 0.06) : null,
+      child: InkWell(
+        onTap: () {
+          if (selecting) {
+            _toggleSel(ref);
+          } else {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => AddTaskScreen(task: task)),
+            );
+          }
+        },
+        onLongPress: selecting ? null : () => _toggleSel(ref),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 5, color: cor),
+              if (selecting)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: IconButton(
+                    icon: Icon(
+                      selected ? Icons.check_circle : Icons.circle_outlined,
+                      color: selected ? scheme.primary : scheme.outline,
+                    ),
+                    onPressed: () => _toggleSel(ref),
+                  ),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.repeat, size: 14, color: cor),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                decoration: task.habitClosed
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                color: task.habitClosed
+                                    ? scheme.onSurfaceVariant
+                                    : null,
+                              ),
+                            ),
+                          ),
+                          _Pill(text: task.priority, color: cor),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        task.habitClosed
+                            ? 'Terminado · $feitos de $totalDias dias'
+                            : '${task.habitStartDate?.day}/${task.habitStartDate?.month} → '
+                                '${task.habitEndDate?.day}/${task.habitEndDate?.month}'
+                                '  ·  $feitos de $totalDias dias'
+                                '${goalName != null ? '  ·  $goalName' : ''}',
+                        style: TextStyle(
+                            fontSize: 12, color: scheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: pct / 100,
+                                minHeight: 8,
+                                backgroundColor: scheme.surfaceContainerHighest,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    pct >= 100 ? const Color(0xFF388E3C) : cor),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('$pct%',
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      if (!task.habitClosed && !selecting) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => HabitService.alternarHoje(ref, task),
+                            icon: Icon(feitoHoje
+                                ? Icons.check_circle
+                                : Icons.radio_button_unchecked),
+                            label: Text(
+                                feitoHoje ? 'Feito hoje' : 'Marcar hoje'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: feitoHoje
+                                  ? const Color(0xFF388E3C)
+                                  : scheme.primary,
+                              side: BorderSide(
+                                color: feitoHoje
+                                    ? const Color(0xFF388E3C)
+                                    : scheme.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (!selecting)
+                PopupMenuButton<String>(
+                  onSelected: (v) async {
+                    if (v == 'editar') {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => AddTaskScreen(task: task)));
+                    } else if (v == 'selecionar') {
+                      _toggleSel(ref);
+                    } else if (v == 'eliminar') {
+                      if (await confirmarEliminacao(context, task.title)) {
+                        await _delete(ref);
+                      }
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'editar', child: Text('Editar')),
+                    PopupMenuItem(
+                        value: 'selecionar', child: Text('Selecionar')),
+                    PopupMenuItem(value: 'eliminar', child: Text('Eliminar')),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (selecting) return card;
+
+    return Dismissible(
+      key: ValueKey(task.id),
+      direction: DismissDirection.horizontal,
+      background: Container(
+        color: Colors.red,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      secondaryBackground: Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (_) => confirmarEliminacao(context, task.title),
+      onDismissed: (_) => _delete(ref),
+      child: card,
     );
   }
 }

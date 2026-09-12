@@ -58,6 +58,24 @@ class Tasks extends Table {
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
   IntColumn get goalId => integer().nullable().references(Goals, #id)();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  // v5 — tarefas-hábito: check-in diário durante um período, em vez de uma
+  // única data de vencimento.
+  BoolColumn get isHabit => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get habitStartDate => dateTime().nullable()();
+  DateTimeColumn get habitEndDate => dateTime().nullable()();
+  IntColumn get reminderHour => integer().nullable()();
+  IntColumn get reminderMinute => integer().nullable()();
+  // true quando o período terminou e a tarefa foi fechada/arquivada sozinha.
+  BoolColumn get habitClosed => boolean().withDefault(const Constant(false))();
+}
+
+// Check-ins diários das tarefas-hábito (v5)
+class HabitCheckins extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get taskId => integer().references(Tasks, #id)();
+  DateTimeColumn get date => dateTime()(); // normalizado à meia-noite
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 // Tabela de Transações Financeiras
@@ -74,12 +92,13 @@ class Transactions extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [Goals, Tasks, Transactions, Reports, Budgets])
+@DriftDatabase(
+    tables: [Goals, Tasks, Transactions, Reports, Budgets, HabitCheckins])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -101,6 +120,16 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await m.createTable(budgets);
             await m.addColumn(reports, reports.type);
+          }
+          // v4 -> v5: tarefas-hábito (check-in diário) + tabela de check-ins.
+          if (from < 5) {
+            await m.addColumn(tasks, tasks.isHabit);
+            await m.addColumn(tasks, tasks.habitStartDate);
+            await m.addColumn(tasks, tasks.habitEndDate);
+            await m.addColumn(tasks, tasks.reminderHour);
+            await m.addColumn(tasks, tasks.reminderMinute);
+            await m.addColumn(tasks, tasks.habitClosed);
+            await m.createTable(habitCheckins);
           }
         },
         // NOTA: `PRAGMA foreign_keys = ON` NÃO é activado de propósito.

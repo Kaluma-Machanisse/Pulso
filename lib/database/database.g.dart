@@ -755,6 +755,81 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _isHabitMeta = const VerificationMeta(
+    'isHabit',
+  );
+  @override
+  late final GeneratedColumn<bool> isHabit = GeneratedColumn<bool>(
+    'is_habit',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_habit" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _habitStartDateMeta = const VerificationMeta(
+    'habitStartDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> habitStartDate =
+      GeneratedColumn<DateTime>(
+        'habit_start_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _habitEndDateMeta = const VerificationMeta(
+    'habitEndDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> habitEndDate = GeneratedColumn<DateTime>(
+    'habit_end_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reminderHourMeta = const VerificationMeta(
+    'reminderHour',
+  );
+  @override
+  late final GeneratedColumn<int> reminderHour = GeneratedColumn<int>(
+    'reminder_hour',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reminderMinuteMeta = const VerificationMeta(
+    'reminderMinute',
+  );
+  @override
+  late final GeneratedColumn<int> reminderMinute = GeneratedColumn<int>(
+    'reminder_minute',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _habitClosedMeta = const VerificationMeta(
+    'habitClosed',
+  );
+  @override
+  late final GeneratedColumn<bool> habitClosed = GeneratedColumn<bool>(
+    'habit_closed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("habit_closed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -765,6 +840,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     isCompleted,
     goalId,
     createdAt,
+    isHabit,
+    habitStartDate,
+    habitEndDate,
+    reminderHour,
+    reminderMinute,
+    habitClosed,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -831,6 +912,57 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('is_habit')) {
+      context.handle(
+        _isHabitMeta,
+        isHabit.isAcceptableOrUnknown(data['is_habit']!, _isHabitMeta),
+      );
+    }
+    if (data.containsKey('habit_start_date')) {
+      context.handle(
+        _habitStartDateMeta,
+        habitStartDate.isAcceptableOrUnknown(
+          data['habit_start_date']!,
+          _habitStartDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('habit_end_date')) {
+      context.handle(
+        _habitEndDateMeta,
+        habitEndDate.isAcceptableOrUnknown(
+          data['habit_end_date']!,
+          _habitEndDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reminder_hour')) {
+      context.handle(
+        _reminderHourMeta,
+        reminderHour.isAcceptableOrUnknown(
+          data['reminder_hour']!,
+          _reminderHourMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reminder_minute')) {
+      context.handle(
+        _reminderMinuteMeta,
+        reminderMinute.isAcceptableOrUnknown(
+          data['reminder_minute']!,
+          _reminderMinuteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('habit_closed')) {
+      context.handle(
+        _habitClosedMeta,
+        habitClosed.isAcceptableOrUnknown(
+          data['habit_closed']!,
+          _habitClosedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -872,6 +1004,30 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      isHabit: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_habit'],
+      )!,
+      habitStartDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}habit_start_date'],
+      ),
+      habitEndDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}habit_end_date'],
+      ),
+      reminderHour: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reminder_hour'],
+      ),
+      reminderMinute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reminder_minute'],
+      ),
+      habitClosed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}habit_closed'],
+      )!,
     );
   }
 
@@ -890,6 +1046,12 @@ class Task extends DataClass implements Insertable<Task> {
   final bool isCompleted;
   final int? goalId;
   final DateTime createdAt;
+  final bool isHabit;
+  final DateTime? habitStartDate;
+  final DateTime? habitEndDate;
+  final int? reminderHour;
+  final int? reminderMinute;
+  final bool habitClosed;
   const Task({
     required this.id,
     required this.title,
@@ -899,6 +1061,12 @@ class Task extends DataClass implements Insertable<Task> {
     required this.isCompleted,
     this.goalId,
     required this.createdAt,
+    required this.isHabit,
+    this.habitStartDate,
+    this.habitEndDate,
+    this.reminderHour,
+    this.reminderMinute,
+    required this.habitClosed,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -917,6 +1085,20 @@ class Task extends DataClass implements Insertable<Task> {
       map['goal_id'] = Variable<int>(goalId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_habit'] = Variable<bool>(isHabit);
+    if (!nullToAbsent || habitStartDate != null) {
+      map['habit_start_date'] = Variable<DateTime>(habitStartDate);
+    }
+    if (!nullToAbsent || habitEndDate != null) {
+      map['habit_end_date'] = Variable<DateTime>(habitEndDate);
+    }
+    if (!nullToAbsent || reminderHour != null) {
+      map['reminder_hour'] = Variable<int>(reminderHour);
+    }
+    if (!nullToAbsent || reminderMinute != null) {
+      map['reminder_minute'] = Variable<int>(reminderMinute);
+    }
+    map['habit_closed'] = Variable<bool>(habitClosed);
     return map;
   }
 
@@ -936,6 +1118,20 @@ class Task extends DataClass implements Insertable<Task> {
           ? const Value.absent()
           : Value(goalId),
       createdAt: Value(createdAt),
+      isHabit: Value(isHabit),
+      habitStartDate: habitStartDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(habitStartDate),
+      habitEndDate: habitEndDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(habitEndDate),
+      reminderHour: reminderHour == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderHour),
+      reminderMinute: reminderMinute == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderMinute),
+      habitClosed: Value(habitClosed),
     );
   }
 
@@ -953,6 +1149,12 @@ class Task extends DataClass implements Insertable<Task> {
       isCompleted: serializer.fromJson<bool>(json['isCompleted']),
       goalId: serializer.fromJson<int?>(json['goalId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isHabit: serializer.fromJson<bool>(json['isHabit']),
+      habitStartDate: serializer.fromJson<DateTime?>(json['habitStartDate']),
+      habitEndDate: serializer.fromJson<DateTime?>(json['habitEndDate']),
+      reminderHour: serializer.fromJson<int?>(json['reminderHour']),
+      reminderMinute: serializer.fromJson<int?>(json['reminderMinute']),
+      habitClosed: serializer.fromJson<bool>(json['habitClosed']),
     );
   }
   @override
@@ -967,6 +1169,12 @@ class Task extends DataClass implements Insertable<Task> {
       'isCompleted': serializer.toJson<bool>(isCompleted),
       'goalId': serializer.toJson<int?>(goalId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isHabit': serializer.toJson<bool>(isHabit),
+      'habitStartDate': serializer.toJson<DateTime?>(habitStartDate),
+      'habitEndDate': serializer.toJson<DateTime?>(habitEndDate),
+      'reminderHour': serializer.toJson<int?>(reminderHour),
+      'reminderMinute': serializer.toJson<int?>(reminderMinute),
+      'habitClosed': serializer.toJson<bool>(habitClosed),
     };
   }
 
@@ -979,6 +1187,12 @@ class Task extends DataClass implements Insertable<Task> {
     bool? isCompleted,
     Value<int?> goalId = const Value.absent(),
     DateTime? createdAt,
+    bool? isHabit,
+    Value<DateTime?> habitStartDate = const Value.absent(),
+    Value<DateTime?> habitEndDate = const Value.absent(),
+    Value<int?> reminderHour = const Value.absent(),
+    Value<int?> reminderMinute = const Value.absent(),
+    bool? habitClosed,
   }) => Task(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -988,6 +1202,16 @@ class Task extends DataClass implements Insertable<Task> {
     isCompleted: isCompleted ?? this.isCompleted,
     goalId: goalId.present ? goalId.value : this.goalId,
     createdAt: createdAt ?? this.createdAt,
+    isHabit: isHabit ?? this.isHabit,
+    habitStartDate: habitStartDate.present
+        ? habitStartDate.value
+        : this.habitStartDate,
+    habitEndDate: habitEndDate.present ? habitEndDate.value : this.habitEndDate,
+    reminderHour: reminderHour.present ? reminderHour.value : this.reminderHour,
+    reminderMinute: reminderMinute.present
+        ? reminderMinute.value
+        : this.reminderMinute,
+    habitClosed: habitClosed ?? this.habitClosed,
   );
   Task copyWithCompanion(TasksCompanion data) {
     return Task(
@@ -1003,6 +1227,22 @@ class Task extends DataClass implements Insertable<Task> {
           : this.isCompleted,
       goalId: data.goalId.present ? data.goalId.value : this.goalId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isHabit: data.isHabit.present ? data.isHabit.value : this.isHabit,
+      habitStartDate: data.habitStartDate.present
+          ? data.habitStartDate.value
+          : this.habitStartDate,
+      habitEndDate: data.habitEndDate.present
+          ? data.habitEndDate.value
+          : this.habitEndDate,
+      reminderHour: data.reminderHour.present
+          ? data.reminderHour.value
+          : this.reminderHour,
+      reminderMinute: data.reminderMinute.present
+          ? data.reminderMinute.value
+          : this.reminderMinute,
+      habitClosed: data.habitClosed.present
+          ? data.habitClosed.value
+          : this.habitClosed,
     );
   }
 
@@ -1016,7 +1256,13 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('priority: $priority, ')
           ..write('isCompleted: $isCompleted, ')
           ..write('goalId: $goalId, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('isHabit: $isHabit, ')
+          ..write('habitStartDate: $habitStartDate, ')
+          ..write('habitEndDate: $habitEndDate, ')
+          ..write('reminderHour: $reminderHour, ')
+          ..write('reminderMinute: $reminderMinute, ')
+          ..write('habitClosed: $habitClosed')
           ..write(')'))
         .toString();
   }
@@ -1031,6 +1277,12 @@ class Task extends DataClass implements Insertable<Task> {
     isCompleted,
     goalId,
     createdAt,
+    isHabit,
+    habitStartDate,
+    habitEndDate,
+    reminderHour,
+    reminderMinute,
+    habitClosed,
   );
   @override
   bool operator ==(Object other) =>
@@ -1043,7 +1295,13 @@ class Task extends DataClass implements Insertable<Task> {
           other.priority == this.priority &&
           other.isCompleted == this.isCompleted &&
           other.goalId == this.goalId &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.isHabit == this.isHabit &&
+          other.habitStartDate == this.habitStartDate &&
+          other.habitEndDate == this.habitEndDate &&
+          other.reminderHour == this.reminderHour &&
+          other.reminderMinute == this.reminderMinute &&
+          other.habitClosed == this.habitClosed);
 }
 
 class TasksCompanion extends UpdateCompanion<Task> {
@@ -1055,6 +1313,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<bool> isCompleted;
   final Value<int?> goalId;
   final Value<DateTime> createdAt;
+  final Value<bool> isHabit;
+  final Value<DateTime?> habitStartDate;
+  final Value<DateTime?> habitEndDate;
+  final Value<int?> reminderHour;
+  final Value<int?> reminderMinute;
+  final Value<bool> habitClosed;
   const TasksCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -1064,6 +1328,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.isCompleted = const Value.absent(),
     this.goalId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.isHabit = const Value.absent(),
+    this.habitStartDate = const Value.absent(),
+    this.habitEndDate = const Value.absent(),
+    this.reminderHour = const Value.absent(),
+    this.reminderMinute = const Value.absent(),
+    this.habitClosed = const Value.absent(),
   });
   TasksCompanion.insert({
     this.id = const Value.absent(),
@@ -1074,6 +1344,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.isCompleted = const Value.absent(),
     this.goalId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.isHabit = const Value.absent(),
+    this.habitStartDate = const Value.absent(),
+    this.habitEndDate = const Value.absent(),
+    this.reminderHour = const Value.absent(),
+    this.reminderMinute = const Value.absent(),
+    this.habitClosed = const Value.absent(),
   }) : title = Value(title);
   static Insertable<Task> custom({
     Expression<int>? id,
@@ -1084,6 +1360,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<bool>? isCompleted,
     Expression<int>? goalId,
     Expression<DateTime>? createdAt,
+    Expression<bool>? isHabit,
+    Expression<DateTime>? habitStartDate,
+    Expression<DateTime>? habitEndDate,
+    Expression<int>? reminderHour,
+    Expression<int>? reminderMinute,
+    Expression<bool>? habitClosed,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1094,6 +1376,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (isCompleted != null) 'is_completed': isCompleted,
       if (goalId != null) 'goal_id': goalId,
       if (createdAt != null) 'created_at': createdAt,
+      if (isHabit != null) 'is_habit': isHabit,
+      if (habitStartDate != null) 'habit_start_date': habitStartDate,
+      if (habitEndDate != null) 'habit_end_date': habitEndDate,
+      if (reminderHour != null) 'reminder_hour': reminderHour,
+      if (reminderMinute != null) 'reminder_minute': reminderMinute,
+      if (habitClosed != null) 'habit_closed': habitClosed,
     });
   }
 
@@ -1106,6 +1394,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<bool>? isCompleted,
     Value<int?>? goalId,
     Value<DateTime>? createdAt,
+    Value<bool>? isHabit,
+    Value<DateTime?>? habitStartDate,
+    Value<DateTime?>? habitEndDate,
+    Value<int?>? reminderHour,
+    Value<int?>? reminderMinute,
+    Value<bool>? habitClosed,
   }) {
     return TasksCompanion(
       id: id ?? this.id,
@@ -1116,6 +1410,12 @@ class TasksCompanion extends UpdateCompanion<Task> {
       isCompleted: isCompleted ?? this.isCompleted,
       goalId: goalId ?? this.goalId,
       createdAt: createdAt ?? this.createdAt,
+      isHabit: isHabit ?? this.isHabit,
+      habitStartDate: habitStartDate ?? this.habitStartDate,
+      habitEndDate: habitEndDate ?? this.habitEndDate,
+      reminderHour: reminderHour ?? this.reminderHour,
+      reminderMinute: reminderMinute ?? this.reminderMinute,
+      habitClosed: habitClosed ?? this.habitClosed,
     );
   }
 
@@ -1146,6 +1446,24 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (isHabit.present) {
+      map['is_habit'] = Variable<bool>(isHabit.value);
+    }
+    if (habitStartDate.present) {
+      map['habit_start_date'] = Variable<DateTime>(habitStartDate.value);
+    }
+    if (habitEndDate.present) {
+      map['habit_end_date'] = Variable<DateTime>(habitEndDate.value);
+    }
+    if (reminderHour.present) {
+      map['reminder_hour'] = Variable<int>(reminderHour.value);
+    }
+    if (reminderMinute.present) {
+      map['reminder_minute'] = Variable<int>(reminderMinute.value);
+    }
+    if (habitClosed.present) {
+      map['habit_closed'] = Variable<bool>(habitClosed.value);
+    }
     return map;
   }
 
@@ -1159,7 +1477,13 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('priority: $priority, ')
           ..write('isCompleted: $isCompleted, ')
           ..write('goalId: $goalId, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('isHabit: $isHabit, ')
+          ..write('habitStartDate: $habitStartDate, ')
+          ..write('habitEndDate: $habitEndDate, ')
+          ..write('reminderHour: $reminderHour, ')
+          ..write('reminderMinute: $reminderMinute, ')
+          ..write('habitClosed: $habitClosed')
           ..write(')'))
         .toString();
   }
@@ -2403,6 +2727,300 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   }
 }
 
+class $HabitCheckinsTable extends HabitCheckins
+    with TableInfo<$HabitCheckinsTable, HabitCheckin> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HabitCheckinsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, taskId, date, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'habit_checkins';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HabitCheckin> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HabitCheckin map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HabitCheckin(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $HabitCheckinsTable createAlias(String alias) {
+    return $HabitCheckinsTable(attachedDatabase, alias);
+  }
+}
+
+class HabitCheckin extends DataClass implements Insertable<HabitCheckin> {
+  final int id;
+  final int taskId;
+  final DateTime date;
+  final DateTime createdAt;
+  const HabitCheckin({
+    required this.id,
+    required this.taskId,
+    required this.date,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['task_id'] = Variable<int>(taskId);
+    map['date'] = Variable<DateTime>(date);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  HabitCheckinsCompanion toCompanion(bool nullToAbsent) {
+    return HabitCheckinsCompanion(
+      id: Value(id),
+      taskId: Value(taskId),
+      date: Value(date),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory HabitCheckin.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HabitCheckin(
+      id: serializer.fromJson<int>(json['id']),
+      taskId: serializer.fromJson<int>(json['taskId']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'taskId': serializer.toJson<int>(taskId),
+      'date': serializer.toJson<DateTime>(date),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  HabitCheckin copyWith({
+    int? id,
+    int? taskId,
+    DateTime? date,
+    DateTime? createdAt,
+  }) => HabitCheckin(
+    id: id ?? this.id,
+    taskId: taskId ?? this.taskId,
+    date: date ?? this.date,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  HabitCheckin copyWithCompanion(HabitCheckinsCompanion data) {
+    return HabitCheckin(
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      date: data.date.present ? data.date.value : this.date,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitCheckin(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('date: $date, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, taskId, date, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HabitCheckin &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.date == this.date &&
+          other.createdAt == this.createdAt);
+}
+
+class HabitCheckinsCompanion extends UpdateCompanion<HabitCheckin> {
+  final Value<int> id;
+  final Value<int> taskId;
+  final Value<DateTime> date;
+  final Value<DateTime> createdAt;
+  const HabitCheckinsCompanion({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  HabitCheckinsCompanion.insert({
+    this.id = const Value.absent(),
+    required int taskId,
+    required DateTime date,
+    this.createdAt = const Value.absent(),
+  }) : taskId = Value(taskId),
+       date = Value(date);
+  static Insertable<HabitCheckin> custom({
+    Expression<int>? id,
+    Expression<int>? taskId,
+    Expression<DateTime>? date,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (date != null) 'date': date,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  HabitCheckinsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? taskId,
+    Value<DateTime>? date,
+    Value<DateTime>? createdAt,
+  }) {
+    return HabitCheckinsCompanion(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      date: date ?? this.date,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitCheckinsCompanion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('date: $date, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2411,6 +3029,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $ReportsTable reports = $ReportsTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
+  late final $HabitCheckinsTable habitCheckins = $HabitCheckinsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2421,6 +3040,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactions,
     reports,
     budgets,
+    habitCheckins,
   ];
 }
 
@@ -2747,6 +3367,12 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<bool> isCompleted,
       Value<int?> goalId,
       Value<DateTime> createdAt,
+      Value<bool> isHabit,
+      Value<DateTime?> habitStartDate,
+      Value<DateTime?> habitEndDate,
+      Value<int?> reminderHour,
+      Value<int?> reminderMinute,
+      Value<bool> habitClosed,
     });
 typedef $$TasksTableUpdateCompanionBuilder =
     TasksCompanion Function({
@@ -2758,6 +3384,12 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<bool> isCompleted,
       Value<int?> goalId,
       Value<DateTime> createdAt,
+      Value<bool> isHabit,
+      Value<DateTime?> habitStartDate,
+      Value<DateTime?> habitEndDate,
+      Value<int?> reminderHour,
+      Value<int?> reminderMinute,
+      Value<bool> habitClosed,
     });
 
 class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
@@ -2805,6 +3437,36 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isHabit => $composableBuilder(
+    column: $table.isHabit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get habitStartDate => $composableBuilder(
+    column: $table.habitStartDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get habitEndDate => $composableBuilder(
+    column: $table.habitEndDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reminderHour => $composableBuilder(
+    column: $table.reminderHour,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reminderMinute => $composableBuilder(
+    column: $table.reminderMinute,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get habitClosed => $composableBuilder(
+    column: $table.habitClosed,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2857,6 +3519,36 @@ class $$TasksTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isHabit => $composableBuilder(
+    column: $table.isHabit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get habitStartDate => $composableBuilder(
+    column: $table.habitStartDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get habitEndDate => $composableBuilder(
+    column: $table.habitEndDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get reminderHour => $composableBuilder(
+    column: $table.reminderHour,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get reminderMinute => $composableBuilder(
+    column: $table.reminderMinute,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get habitClosed => $composableBuilder(
+    column: $table.habitClosed,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TasksTableAnnotationComposer
@@ -2895,6 +3587,34 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isHabit =>
+      $composableBuilder(column: $table.isHabit, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get habitStartDate => $composableBuilder(
+    column: $table.habitStartDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get habitEndDate => $composableBuilder(
+    column: $table.habitEndDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get reminderHour => $composableBuilder(
+    column: $table.reminderHour,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get reminderMinute => $composableBuilder(
+    column: $table.reminderMinute,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get habitClosed => $composableBuilder(
+    column: $table.habitClosed,
+    builder: (column) => column,
+  );
 }
 
 class $$TasksTableTableManager
@@ -2933,6 +3653,12 @@ class $$TasksTableTableManager
                 Value<bool> isCompleted = const Value.absent(),
                 Value<int?> goalId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isHabit = const Value.absent(),
+                Value<DateTime?> habitStartDate = const Value.absent(),
+                Value<DateTime?> habitEndDate = const Value.absent(),
+                Value<int?> reminderHour = const Value.absent(),
+                Value<int?> reminderMinute = const Value.absent(),
+                Value<bool> habitClosed = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
                 title: title,
@@ -2942,6 +3668,12 @@ class $$TasksTableTableManager
                 isCompleted: isCompleted,
                 goalId: goalId,
                 createdAt: createdAt,
+                isHabit: isHabit,
+                habitStartDate: habitStartDate,
+                habitEndDate: habitEndDate,
+                reminderHour: reminderHour,
+                reminderMinute: reminderMinute,
+                habitClosed: habitClosed,
               ),
           createCompanionCallback:
               ({
@@ -2953,6 +3685,12 @@ class $$TasksTableTableManager
                 Value<bool> isCompleted = const Value.absent(),
                 Value<int?> goalId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isHabit = const Value.absent(),
+                Value<DateTime?> habitStartDate = const Value.absent(),
+                Value<DateTime?> habitEndDate = const Value.absent(),
+                Value<int?> reminderHour = const Value.absent(),
+                Value<int?> reminderMinute = const Value.absent(),
+                Value<bool> habitClosed = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
                 title: title,
@@ -2962,6 +3700,12 @@ class $$TasksTableTableManager
                 isCompleted: isCompleted,
                 goalId: goalId,
                 createdAt: createdAt,
+                isHabit: isHabit,
+                habitStartDate: habitStartDate,
+                habitEndDate: habitEndDate,
+                reminderHour: reminderHour,
+                reminderMinute: reminderMinute,
+                habitClosed: habitClosed,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -3637,6 +4381,181 @@ typedef $$BudgetsTableProcessedTableManager =
       Budget,
       PrefetchHooks Function()
     >;
+typedef $$HabitCheckinsTableCreateCompanionBuilder =
+    HabitCheckinsCompanion Function({
+      Value<int> id,
+      required int taskId,
+      required DateTime date,
+      Value<DateTime> createdAt,
+    });
+typedef $$HabitCheckinsTableUpdateCompanionBuilder =
+    HabitCheckinsCompanion Function({
+      Value<int> id,
+      Value<int> taskId,
+      Value<DateTime> date,
+      Value<DateTime> createdAt,
+    });
+
+class $$HabitCheckinsTableFilterComposer
+    extends Composer<_$AppDatabase, $HabitCheckinsTable> {
+  $$HabitCheckinsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HabitCheckinsTableOrderingComposer
+    extends Composer<_$AppDatabase, $HabitCheckinsTable> {
+  $$HabitCheckinsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HabitCheckinsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HabitCheckinsTable> {
+  $$HabitCheckinsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$HabitCheckinsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HabitCheckinsTable,
+          HabitCheckin,
+          $$HabitCheckinsTableFilterComposer,
+          $$HabitCheckinsTableOrderingComposer,
+          $$HabitCheckinsTableAnnotationComposer,
+          $$HabitCheckinsTableCreateCompanionBuilder,
+          $$HabitCheckinsTableUpdateCompanionBuilder,
+          (
+            HabitCheckin,
+            BaseReferences<_$AppDatabase, $HabitCheckinsTable, HabitCheckin>,
+          ),
+          HabitCheckin,
+          PrefetchHooks Function()
+        > {
+  $$HabitCheckinsTableTableManager(_$AppDatabase db, $HabitCheckinsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HabitCheckinsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HabitCheckinsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HabitCheckinsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> taskId = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => HabitCheckinsCompanion(
+                id: id,
+                taskId: taskId,
+                date: date,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int taskId,
+                required DateTime date,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => HabitCheckinsCompanion.insert(
+                id: id,
+                taskId: taskId,
+                date: date,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HabitCheckinsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HabitCheckinsTable,
+      HabitCheckin,
+      $$HabitCheckinsTableFilterComposer,
+      $$HabitCheckinsTableOrderingComposer,
+      $$HabitCheckinsTableAnnotationComposer,
+      $$HabitCheckinsTableCreateCompanionBuilder,
+      $$HabitCheckinsTableUpdateCompanionBuilder,
+      (
+        HabitCheckin,
+        BaseReferences<_$AppDatabase, $HabitCheckinsTable, HabitCheckin>,
+      ),
+      HabitCheckin,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3651,4 +4570,6 @@ class $AppDatabaseManager {
       $$ReportsTableTableManager(_db, _db.reports);
   $$BudgetsTableTableManager get budgets =>
       $$BudgetsTableTableManager(_db, _db.budgets);
+  $$HabitCheckinsTableTableManager get habitCheckins =>
+      $$HabitCheckinsTableTableManager(_db, _db.habitCheckins);
 }

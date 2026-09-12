@@ -52,7 +52,7 @@ assets/icon/                   Fonte do ícone da app (gerado por test/gen_icons
 
 ## 3. Modelo de dados (`lib/database/database.dart`)
 
-`schemaVersion = 4`. Cinco tabelas, todas com `id` autoincrement.
+`schemaVersion = 5`. Seis tabelas, todas com `id` autoincrement.
 
 ### Goals (Objectivos)
 | Campo | Tipo | Notas |
@@ -93,8 +93,18 @@ assets/icon/                   Fonte do ícone da app (gerado por test/gen_icons
 | description | text? | |
 | dueDate | dateTime? | vencimento |
 | priority | text | default `Média` (Alta / Média / Baixa) |
-| isCompleted | bool | default `false` |
+| isCompleted | bool | default `false`. Em tarefas-hábito passa a `true` quando o período fecha |
 | goalId | int? | referência a `Goals.id` (ver limitação em §7) |
+| isHabit | bool | **v5** — `true` = tarefa-hábito (check-in diário em vez de data única) |
+| habitStartDate / habitEndDate | dateTime? | **v5** — período do hábito |
+| reminderHour / reminderMinute | int? | **v5** — hora do lembrete diário |
+| habitClosed | bool | **v5** — `true` quando o período terminou e foi fechado sozinho |
+
+### HabitCheckins (check-ins diários) — v5
+| Campo | Tipo | Notas |
+|---|---|---|
+| taskId | int | referência a `Tasks.id` |
+| date | dateTime | dia marcado (normalizado à meia-noite) |
 
 ### Transactions (Transações)
 | Campo | Tipo | Notas |
@@ -146,8 +156,8 @@ Sempre que mudares colunas:
 | `add_goal_screen.dart` | ConsumerStateful | Formulário criar/editar objectivo (título, descrição, categoria, **importância**, **prazo**, data, progresso). Ao guardar: sweep de arquivo + reagenda lembretes |
 | `reports_screen.dart` | ConsumerWidget | Histórico de relatórios mensais; toque = detalhe, botão = exportar PDF, toque longo = apagar |
 | `report_detail_screen.dart` | StatelessWidget | Relatório de um mês (resumo + concluídos + progresso dos activos) + exportar PDF |
-| `tasks_screen.dart` | ConsumerStateful | Tarefas em **cartões** (cor por prioridade), **agrupadas** por Atrasadas / Hoje / Esta semana / Depois / Sem data + Concluídas. **Checkbox** para concluir/reabrir (recalcula o objectivo ligado); chip de prioridade, texto de vencimento, objectivo. **Seleção múltipla** (concluir/eliminar em lote), painel de **filtros** (prioridade, objectivo, mostrar concluídas), swipe para eliminar |
-| `add_task_screen.dart` | ConsumerStateful | Formulário criar/editar tarefa: título, descrição, prioridade, **objectivo (opcional)**, **concluída**, data. Ao guardar recalcula o progresso do objectivo novo e do antigo |
+| `tasks_screen.dart` | ConsumerStateful | Tarefas em **cartões** (cor por prioridade), **agrupadas** por Atrasadas / Hoje / Esta semana / Depois / Sem data + Concluídas; secção própria **"Hábitos"** no topo para as tarefas-hábito activas. **Checkbox** para concluir/reabrir tarefas normais (recalcula o objectivo ligado); botão **"Marcar hoje"** nos hábitos. Chip de prioridade, texto de vencimento/período, objectivo. **Seleção múltipla** (concluir/eliminar em lote), painel de **filtros** (prioridade, objectivo, mostrar concluídas), swipe para eliminar |
+| `add_task_screen.dart` | ConsumerStateful | Formulário criar/editar tarefa: título, descrição, prioridade, **objectivo (opcional)**, interruptor **"Tarefa-hábito"** (só ao criar) que troca **concluída + data** por **início / fim / hora do lembrete diário**. Ao guardar recalcula o progresso do objectivo novo e do antigo |
 | `finance_screen.dart` | ConsumerStateful | Saldo + **banner** de orçamentos ultrapassados + secção **"Gastos deste mês"** (barras por categoria) + lista filtrável (tipo, categoria, mês, ano). Toque numa transação = editar; swipe = eliminar. Menu → Orçamentos / Relatórios. Botão de push para Supabase com feedback |
 | `add_transaction_screen.dart` | ConsumerStateful | Formulário **criar E editar** transação (recebe `tx?`) |
 | `budgets_screen.dart` | ConsumerWidget | Orçamentos mensais por categoria: definir/editar/eliminar limite, barra de progresso do gasto do mês, marca de ultrapassado |
@@ -163,7 +173,9 @@ Sempre que mudares colunas:
 | `database_provider.dart` | `databaseProvider` | Instância única de `AppDatabase` |
 | `goal_providers.dart` | `goalsProvider` (activos), `archivedGoalsProvider`, `addGoalProvider`, `updateGoalProvider`, `deleteGoalProvider` | CRUD de objectivos |
 | `goal_selection_provider.dart` | `goalSelectionProvider` (`Set<int>`) | Ids selecionados no modo de seleção múltipla (vazio = desligado) |
-| `task_providers.dart` | `tasksProvider` (stream), `addTaskProvider`, `updateTaskProvider`, `deleteTaskProvider`, `tasksByGoalProvider` | CRUD de tarefas |
+| `task_providers.dart` | `tasksProvider` (stream), `addTaskProvider`, `updateTaskProvider`, `deleteTaskProvider`, `tasksByGoalProvider`, `habitCheckinsProvider` | CRUD de tarefas + check-ins dos hábitos |
+| `task_filter_provider.dart` | `taskFilterProvider` (prioridade, objectivo, mostrar concluídas) | Filtros do ecrã de Tarefas |
+| `task_selection_provider.dart` | `taskSelectionProvider` (`Set<int>`) | Ids selecionados no modo de seleção múltipla de Tarefas |
 | `transaction_providers.dart` | `transactionsProvider`, `addTransactionProvider`, `updateTransactionProvider`, `deleteTransactionProvider`, `balanceProvider`, `filteredTransactionsProvider`, `currentMonthExpensesByCategoryProvider` | CRUD + saldo + lista filtrada + gastos do mês |
 | `filter_providers.dart` | `financeFilterProvider` (`StateNotifier`) | Filtros da Carteira: `type`, `category`, `month`, `year` |
 | `budget_providers.dart` | `budgetsProvider`, `upsertBudgetProvider`, `deleteBudgetProvider`, `budgetStatusProvider`, `overBudgetCountProvider` | Orçamentos + estado (gasto vs limite) do mês corrente |
@@ -191,7 +203,8 @@ Sempre que mudares colunas:
 | `report_service.dart` | `MonthlyReport` (objectivos concluídos no mês + activos), gera os meses em falta no arranque, retenção de 1 ano |
 | `report_pdf.dart` | Exporta um `MonthlyReport` para PDF (via `printing`) |
 | `reminder_service.dart` | `checkAndNotify(ref)` — verificação **ao abrir a app**: respeita `notificationsEnabled`; notifica tarefas a vencer hoje/amanhã e objectivos <50% com data-alvo em ≤7 dias. Complementa (não substitui) os lembretes agendados |
-| `task_reminder_service.dart` | Agenda por tarefa com data: aviso na **véspera (18h)** e no **dia (9h)**. `rescheduleForTask` / `rescheduleAll` / `cancelForTask`. Faixa de ids `500000 + taskId*10` |
+| `task_reminder_service.dart` | Tarefas normais: aviso na **véspera (18h)** e no **dia (9h)** (ids `500000 + taskId*10`). Tarefas-hábito: uma notificação por dia à hora escolhida, janela rolante de 90 dias (ids `700000 + taskId*100`). `rescheduleForTask` / `rescheduleAll` / `cancelForTask` |
+| `habit_service.dart` | Tarefas-hábito: `alternarHoje` (marca/desmarca o check-in de hoje), `percent`/`totalDias`/`diasFeitos`, `sweepClose` (fecha sozinho os hábitos cujo período terminou) |
 | `sms_service.dart` | Pede permissão SMS, escuta mensagens recebidas, passa por `SmsParser` e grava a transação (`await ... .future`) |
 | `sms_parser.dart` | Regras regex para **M-Pesa** e **BIM**: extrai `amount`, `type` (receita/despesa), `reference` |
 | `transaction_ingest_service.dart` | Ponto único: analisa um texto (SMS ou push), **evita duplicados** pela referência (`smsId`) e grava a transação |
@@ -296,6 +309,9 @@ flutter build apk --release
 | `65d42dd` | 2026-09 | **Ícone da app** + `flutter_native_splash` (sem flash branco) |
 | `d761fec` | 2026-09 | **Módulo Tarefas** — cartões, agrupamento, notificações agendadas (`task_reminder_service`), seleção múltipla, filtros |
 | `934e2e9` | 2026-09 | **Módulo Carteira** — editar transações, gráfico de gastos, orçamentos por categoria (schema v4), relatório financeiro mensal + PDF |
+| `866c323` | 2026-09 | Leitura de **notificações push** de apps bancárias (Android) |
+| `365dac6` | 2026-09 | **Ecrã de login real** (Supabase Auth) — remove credenciais embutidas na app |
+| *(local)* | 2026-09 | **Tarefas-hábito** (schema v5) — check-in diário, período, progresso automático dos objectivos passa a ser por média de percentagem |
 | *(local)* | 2026-09 | **Leitura de notificações push** de apps bancárias (Android, `notification_listener_service`) + serviço de ingestão partilhado com as SMS |
 
 ---
