@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/backup_service.dart';
 import '../services/bank_notification_service.dart';
 import 'login_screen.dart';
+import '../theme/semantic_colors.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -19,147 +20,161 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Configurações')),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          // Conta
-          ListTile(
-            leading: Icon(user != null ? Icons.account_circle : Icons.no_accounts),
-            title: Text(user != null ? (user.email ?? 'Sessão activa') : 'Sem sessão'),
-            subtitle: Text(user != null
-                ? 'Ligado ao Supabase — a sincronização está disponível'
-                : 'Sem conta ligada — a app funciona só localmente'),
-            trailing: user != null
-                ? TextButton(
-                    onPressed: () async {
-                      final ok = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Sair da conta?'),
-                          content: const Text(
-                              'Os dados locais mantêm-se; deixas de sincronizar com o Supabase.'),
-                          actions: [
-                            TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancelar')),
-                            TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text('Sair')),
-                          ],
-                        ),
-                      );
-                      if (ok != true) return;
-                      await AuthService.signOut();
-                      if (!context.mounted) return;
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    },
-                    child: const Text('Sair'),
-                  )
-                : TextButton(
-                    onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const LoginScreen())),
-                    child: const Text('Entrar'),
-                  ),
+          _SettingsSection(
+            title: 'Conta',
+            children: [
+              ListTile(
+                leading: Icon(
+                    user != null ? Icons.account_circle : Icons.no_accounts),
+                title: Text(
+                    user != null ? (user.email ?? 'Sessão activa') : 'Sem sessão'),
+                subtitle: Text(user != null
+                    ? 'Ligado ao Supabase — a sincronização está disponível'
+                    : 'Sem conta ligada — a app funciona só localmente'),
+                trailing: user != null
+                    ? TextButton(
+                        onPressed: () async {
+                          final ok = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Sair da conta?'),
+                              content: const Text(
+                                  'Os dados locais mantêm-se; deixas de sincronizar com o Supabase.'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancelar')),
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('Sair')),
+                              ],
+                            ),
+                          );
+                          if (ok != true) return;
+                          await AuthService.signOut();
+                          if (!context.mounted) return;
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (_) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        },
+                        child: const Text('Sair'),
+                      )
+                    : TextButton(
+                        onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const LoginScreen())),
+                        child: const Text('Entrar'),
+                      ),
+              ),
+            ],
           ),
-          const Divider(),
-
-          // Tema
-          ListTile(
-            leading: const Icon(Icons.brightness_6),
-            title: const Text('Tema'),
-            subtitle: Text(
-              settings.themeMode == ThemeMode.system
-                  ? 'Sistema'
-                  : settings.themeMode == ThemeMode.dark
-                      ? 'Escuro'
-                      : 'Claro',
-            ),
-            onTap: () => _showThemeDialog(context, ref, settings),
-          ),
-          const Divider(),
-
-          // Moeda
-          ListTile(
-            leading: const Icon(Icons.attach_money),
-            title: const Text('Moeda'),
-            subtitle: Text(settings.currency),
-            onTap: () => _showCurrencyDialog(context, ref, settings),
-          ),
-          const Divider(),
-
-          // Backup
-          ListTile(
-            leading: const Icon(Icons.backup),
-            title: const Text('Backup local (JSON)'),
-            subtitle: const Text('Exportar dados para um ficheiro'),
-            onTap: () async {
-              final r = await BackupService.exportToJson(ref);
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(r == BackupResult.sucesso
-                    ? 'Backup criado com sucesso'
-                    : 'Erro ao criar o backup'),
-                backgroundColor:
-                    r == BackupResult.sucesso ? null : Colors.red,
-              ));
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.restore),
-            title: const Text('Restaurar backup local'),
-            subtitle: const Text('Substitui TODOS os dados actuais'),
-            onTap: () async {
-              final confirmar = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('Restaurar backup?'),
-                  content: const Text(
-                      'Isto apaga os dados actuais e substitui pelos do ficheiro de backup. Continuar?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancelar'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Restaurar'),
-                    ),
-                  ],
+          _SettingsSection(
+            title: 'Aparência',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.brightness_6),
+                title: const Text('Tema'),
+                subtitle: Text(
+                  settings.themeMode == ThemeMode.system
+                      ? 'Sistema'
+                      : settings.themeMode == ThemeMode.dark
+                          ? 'Escuro'
+                          : 'Claro',
                 ),
-              );
-              if (confirmar != true) return;
-
-              final r = await BackupService.importFromJson(ref);
-              if (!context.mounted) return;
-              final msg = switch (r) {
-                BackupResult.sucesso => 'Dados restaurados do backup',
-                BackupResult.semFicheiro => 'Não existe nenhum backup local',
-                BackupResult.erro => 'Erro ao restaurar o backup',
-              };
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(msg),
-                backgroundColor:
-                    r == BackupResult.sucesso ? null : Colors.red,
-              ));
-            },
+                onTap: () => _showThemeDialog(context, ref, settings),
+              ),
+              ListTile(
+                leading: const Icon(Icons.attach_money),
+                title: const Text('Moeda'),
+                subtitle: Text(settings.currency),
+                onTap: () => _showCurrencyDialog(context, ref, settings),
+              ),
+            ],
           ),
-          const Divider(),
+          _SettingsSection(
+            title: 'Dados',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.backup),
+                title: const Text('Backup local (JSON)'),
+                subtitle: const Text('Exportar dados para um ficheiro'),
+                onTap: () async {
+                  final r = await BackupService.exportToJson(ref);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(r == BackupResult.sucesso
+                        ? 'Backup criado com sucesso'
+                        : 'Erro ao criar o backup'),
+                    backgroundColor:
+                        r == BackupResult.sucesso ? null : Colors.red,
+                  ));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.restore),
+                title: const Text('Restaurar backup local'),
+                subtitle: const Text('Substitui TODOS os dados actuais'),
+                onTap: () async {
+                  final confirmar = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Restaurar backup?'),
+                      content: const Text(
+                          'Isto apaga os dados actuais e substitui pelos do ficheiro de backup. Continuar?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancelar'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Restaurar'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmar != true) return;
 
-          // Notificações
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications),
-            title: const Text('Notificações'),
-            subtitle: const Text('Lembretes de tarefas e objectivos'),
-            value: settings.notificationsEnabled,
-            onChanged: (val) {
-              ref.read(settingsProvider.notifier).setNotificationsEnabled(val);
-            },
+                  final r = await BackupService.importFromJson(ref);
+                  if (!context.mounted) return;
+                  final msg = switch (r) {
+                    BackupResult.sucesso => 'Dados restaurados do backup',
+                    BackupResult.semFicheiro =>
+                      'Não existe nenhum backup local',
+                    BackupResult.erro => 'Erro ao restaurar o backup',
+                  };
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(msg),
+                    backgroundColor:
+                        r == BackupResult.sucesso ? null : Colors.red,
+                  ));
+                },
+              ),
+            ],
           ),
-          const Divider(),
-
-          // Leitura de notificações bancárias (Android)
-          const _BankNotifTile(),
+          _SettingsSection(
+            title: 'Notificações',
+            children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.notifications),
+                title: const Text('Notificações'),
+                subtitle: const Text('Lembretes de tarefas e objectivos'),
+                value: settings.notificationsEnabled,
+                onChanged: (val) {
+                  ref
+                      .read(settingsProvider.notifier)
+                      .setNotificationsEnabled(val);
+                },
+              ),
+              const _BankNotifTile(),
+            ],
+          ),
         ],
       ),
     );
@@ -176,6 +191,48 @@ class SettingsScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (_) => _CurrencyDialog(settings: settings, ref: ref),
+    );
+  }
+}
+
+// ---------- Secção agrupada ----------
+class _SettingsSection extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+  const _SettingsSection({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
+              title.toUpperCase(),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+          ),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            margin: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (var i = 0; i < children.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  children[i],
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -240,11 +297,11 @@ class _ThemeDialogState extends State<_ThemeDialog> {
     return ListTile(
       leading: Icon(
         icon,
-        color: isSelected ? Colors.blue : null,
+        color: isSelected ? Theme.of(context).colorScheme.primary : null,
       ),
       title: Text(title),
       trailing: isSelected
-          ? const Icon(Icons.check_circle, color: Colors.blue)
+          ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
           : const Icon(Icons.circle_outlined),
       onTap: () => setState(() => _selected = value),
     );
@@ -304,11 +361,11 @@ class _CurrencyDialogState extends State<_CurrencyDialog> {
     return ListTile(
       leading: Icon(
         Icons.attach_money,
-        color: isSelected ? Colors.blue : null,
+        color: isSelected ? Theme.of(context).colorScheme.primary : null,
       ),
       title: Text(title),
       trailing: isSelected
-          ? const Icon(Icons.check_circle, color: Colors.blue)
+          ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
           : const Icon(Icons.circle_outlined),
       onTap: () => setState(() => _selected = value),
     );
@@ -368,7 +425,7 @@ class _BankNotifTileState extends ConsumerState<_BankNotifTile> {
               ? 'Activo — notificações de apps de banco/carteira viram transações'
               : 'Desligado — toca para dar acesso nas Definições do Android'),
       trailing: _ativo
-          ? const Icon(Icons.check_circle, color: Colors.green)
+          ? const Icon(Icons.check_circle, color: SemanticColors.receita)
           : const Icon(Icons.chevron_right),
       onTap: _abrir,
     );

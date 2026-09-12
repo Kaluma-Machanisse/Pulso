@@ -5,6 +5,7 @@ import '../providers/filter_providers.dart';
 import '../providers/settings_providers.dart';
 import '../providers/budget_providers.dart';
 import '../services/sync_service.dart';
+import '../theme/semantic_colors.dart';
 import '../widgets/confirm_dialog.dart';
 import 'add_transaction_screen.dart';
 import 'budgets_screen.dart';
@@ -96,13 +97,33 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            color: scheme.primaryContainer,
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+            ),
             child: balanceAsync.when(
-              data: (b) => Text('Saldo: ${b.toStringAsFixed(2)} $moeda',
-                  style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center),
+              data: (b) => Column(
+                children: [
+                  Text('SALDO ACTUAL',
+                      style: TextStyle(
+                        fontSize: 11,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.bold,
+                        color: scheme.onPrimaryContainer.withValues(alpha: 0.7),
+                      )),
+                  const SizedBox(height: 4),
+                  Text('${b.toStringAsFixed(2)} $moeda',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: scheme.onPrimaryContainer,
+                      )),
+                ],
+              ),
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => const Text('Erro'),
@@ -212,19 +233,38 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             child: filteredAsync.when(
               data: (txList) {
                 if (txList.isEmpty) {
-                  return const Center(child: Text('Sem transações.'));
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.receipt_long_outlined,
+                              size: 56, color: scheme.onSurfaceVariant),
+                          const SizedBox(height: 12),
+                          const Text('Sem transações.'),
+                          const SizedBox(height: 4),
+                          Text('Toca em + para registar a primeira.',
+                              style: TextStyle(color: scheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
+                  );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 88),
+                  padding: const EdgeInsets.only(bottom: 88, top: 4),
                   itemCount: txList.length,
                   itemBuilder: (_, i) {
                     final tx = txList[i];
                     final isReceita = tx.type == 'receita';
+                    final cor = isReceita
+                        ? SemanticColors.receita
+                        : SemanticColors.despesa;
                     return Dismissible(
                       key: ValueKey(tx.id),
                       direction: DismissDirection.endToStart,
                       background: Container(
-                        color: Colors.red,
+                        color: SemanticColors.despesa,
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: const Icon(Icons.delete, color: Colors.white),
@@ -234,11 +274,18 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                       onDismissed: (_) =>
                           ref.read(deleteTransactionProvider(tx.id)),
                       child: ListTile(
-                        leading: Icon(
-                          isReceita ? Icons.arrow_downward : Icons.arrow_upward,
-                          color: isReceita ? Colors.green : Colors.red,
+                        leading: CircleAvatar(
+                          backgroundColor: cor.withValues(alpha: 0.12),
+                          foregroundColor: cor,
+                          child: Icon(
+                            isReceita
+                                ? Icons.arrow_downward
+                                : Icons.arrow_upward,
+                            size: 20,
+                          ),
                         ),
-                        title: Text(tx.description ?? tx.category),
+                        title: Text(tx.description ?? tx.category,
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(
                           '${tx.category} · ${tx.date.day}/${tx.date.month}/${tx.date.year}'
                           '${tx.source != 'manual' ? '  ·  ${tx.source}' : ''}',
@@ -246,7 +293,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                         trailing: Text(
                           '${isReceita ? '+' : '-'}${tx.amount.toStringAsFixed(2)} $moeda',
                           style: TextStyle(
-                            color: isReceita ? Colors.green : Colors.red,
+                            color: cor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

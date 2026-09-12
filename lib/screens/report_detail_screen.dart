@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_providers.dart';
 import '../services/report_service.dart';
 import '../services/report_pdf.dart';
+import '../theme/semantic_colors.dart';
 
 const _meses = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -74,7 +75,7 @@ class _Objectivos extends StatelessWidget {
           ...r.completed.map((g) => ListTile(
                 dense: true,
                 leading:
-                    const Icon(Icons.check_circle, color: Colors.green),
+                    const Icon(Icons.check_circle, color: SemanticColors.receita),
                 title: Text(g.title),
                 subtitle:
                     Text('${g.category} · ${g.importance} · ${g.term}'),

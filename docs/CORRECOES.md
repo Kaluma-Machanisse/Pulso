@@ -493,6 +493,32 @@ adicionar **vários lembretes ao longo do dia** (ex.: 08:00 e 20:00).
 
 ---
 
+# Limpeza visual — Estatísticas, Configurações, Carteira — Setembro 2026
+
+Auditoria dos ecrãs que ainda não tinham recebido o tratamento de identidade
+(cartões, cor de marca, tipografia consistente) dado a Objectivos/Tarefas.
+
+- **Novo** `lib/theme/semantic_colors.dart` — `SemanticColors.receita`/`despesa`
+  (verde/vermelho) partilhado entre Carteira, Estatísticas e Relatórios, em
+  vez de `Colors.green`/`Colors.red` literais espalhados pelo código.
+- `stats_screen.dart` reescrito: 3 cartões de resumo (Saldo, Receitas do mês,
+  Despesas do mês), gráfico dentro de um `Card` com legenda e grelha subtil,
+  lista de progresso dos objectivos com o mesmo estilo de barra usado em
+  Objectivos (antes usava `Colors.blue`/`Colors.grey` genéricos).
+- `settings_screen.dart`: agrupado em secções com título (Conta, Aparência,
+  Dados, Notificações), cada uma num `Card`; diálogos de tema/moeda deixam de
+  usar `Colors.blue` fixo e passam a usar a cor de marca do tema.
+- `finance_screen.dart`: banner do saldo com cantos arredondados e rótulo
+  "SALDO ACTUAL"; transações com `CircleAvatar` colorido em vez de ícone solto;
+  estado vazio com ícone (antes era só texto).
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK; testado a correr no Linux.
+
+---
+
 # Ordem dos separadores — Setembro 2026
 
 `home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de

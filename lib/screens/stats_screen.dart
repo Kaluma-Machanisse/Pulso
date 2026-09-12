@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/stats_providers.dart';
+import '../providers/transaction_providers.dart';
+import '../providers/settings_providers.dart';
 import '../services/sync_service.dart';
+import '../theme/semantic_colors.dart';
 
 class StatsScreen extends ConsumerWidget {
   const StatsScreen({super.key});
@@ -11,6 +14,9 @@ class StatsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final monthlyStatsAsync = ref.watch(monthlyStatsProvider);
     final goalsProgressAsync = ref.watch(goalsProgressProvider);
+    final balanceAsync = ref.watch(balanceProvider);
+    final moeda = ref.watch(settingsProvider).currency;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -40,131 +46,282 @@ class StatsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Receitas vs Despesas (mensal)',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 250,
-              child: monthlyStatsAsync.when(
-                data: (monthly) {
-                  if (monthly.isEmpty) {
-                    return const Center(child: Text('Sem dados'));
-                  }
-                  final months = monthly.keys.toList()..sort();
-                  // As barras (receitas/despesas) são lado a lado, não
-                  // empilhadas: o topo do eixo é o maior valor individual,
-                  // com 10% de folga.
-                  final maiorValor = monthly.values.fold<double>(
-                    0.0,
-                    (prev, m) => [
-                      prev,
-                      m['receitas'] ?? 0,
-                      m['despesas'] ?? 0,
-                    ].reduce((a, b) => a > b ? a : b),
-                  );
-                  return BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: maiorValor == 0 ? 1 : maiorValor * 1.1,
-                      barGroups: List.generate(months.length, (i) {
-                        final data = monthly[months[i]]!;
-                        return BarChartGroupData(
-                          x: i,
-                          barRods: [
-                            BarChartRodData(
-                              toY: data['receitas']!,
-                              color: Colors.green,
-                              width: 12,
-                            ),
-                            BarChartRodData(
-                              toY: data['despesas']!,
-                              color: Colors.red,
-                              width: 12,
-                            ),
-                          ],
-                        );
-                      }),
-                      titlesData: FlTitlesData(
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) => Text(
-                              value.toStringAsFixed(0),
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                          ),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              final idx = value.toInt();
-                              if (idx >= 0 && idx < months.length) {
-                                return Text(months[idx],
-                                    style: const TextStyle(fontSize: 9));
-                              }
-                              return const Text('');
-                            },
-                          ),
-                        ),
-                        rightTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        topTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
+            // ---- Resumo ----
+            monthlyStatsAsync.when(
+              data: (monthly) {
+                final chave = monthly.keys.isEmpty
+                    ? null
+                    : (monthly.keys.toList()..sort()).last;
+                final mesActual = chave != null ? monthly[chave]! : null;
+                return Row(
+                  children: [
+                    _StatCard(
+                      label: 'Saldo',
+                      value: balanceAsync.when(
+                        data: (b) => '${b.toStringAsFixed(0)} $moeda',
+                        loading: () => '—',
+                        error: (_, __) => '—',
                       ),
+                      color: scheme.primary,
                     ),
-                  );
-                },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Erro: $e')),
+                    _StatCard(
+                      label: 'Receitas (mês)',
+                      value:
+                          '${(mesActual?['receitas'] ?? 0).toStringAsFixed(0)} $moeda',
+                      color: SemanticColors.receita,
+                    ),
+                    _StatCard(
+                      label: 'Despesas (mês)',
+                      value:
+                          '${(mesActual?['despesas'] ?? 0).toStringAsFixed(0)} $moeda',
+                      color: SemanticColors.despesa,
+                    ),
+                  ],
+                );
+              },
+              loading: () => const SizedBox(
+                  height: 74, child: Center(child: CircularProgressIndicator())),
+              error: (e, _) => Text('Erro: $e'),
+            ),
+            const SizedBox(height: 24),
+
+            // ---- Gráfico mensal ----
+            Text('Receitas vs despesas',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                _Legenda(cor: SemanticColors.receita, texto: 'Receitas'),
+                const SizedBox(width: 16),
+                _Legenda(cor: SemanticColors.despesa, texto: 'Despesas'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
+                child: SizedBox(
+                  height: 230,
+                  child: monthlyStatsAsync.when(
+                    data: (monthly) {
+                      if (monthly.isEmpty) {
+                        return const Center(
+                            child: Text('Sem transações registadas.'));
+                      }
+                      final months = monthly.keys.toList()..sort();
+                      // As barras são lado a lado, não empilhadas: o topo do
+                      // eixo é o maior valor individual, com 10% de folga.
+                      final maiorValor = monthly.values.fold<double>(
+                        0.0,
+                        (prev, m) => [
+                          prev,
+                          m['receitas'] ?? 0,
+                          m['despesas'] ?? 0,
+                        ].reduce((a, b) => a > b ? a : b),
+                      );
+                      return BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceAround,
+                          maxY: maiorValor == 0 ? 1 : maiorValor * 1.1,
+                          gridData: FlGridData(
+                            drawVerticalLine: false,
+                            horizontalInterval: maiorValor == 0
+                                ? 1
+                                : (maiorValor * 1.1) / 4,
+                            getDrawingHorizontalLine: (_) => FlLine(
+                              color: scheme.outlineVariant,
+                              strokeWidth: 1,
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          barGroups: List.generate(months.length, (i) {
+                            final data = monthly[months[i]]!;
+                            return BarChartGroupData(
+                              x: i,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: data['receitas']!,
+                                  color: SemanticColors.receita,
+                                  width: 12,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                BarChartRodData(
+                                  toY: data['despesas']!,
+                                  color: SemanticColors.despesa,
+                                  width: 12,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ],
+                            );
+                          }),
+                          titlesData: FlTitlesData(
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 40,
+                                getTitlesWidget: (value, meta) => Text(
+                                  value.toStringAsFixed(0),
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: scheme.onSurfaceVariant),
+                                ),
+                              ),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final idx = value.toInt();
+                                  if (idx >= 0 && idx < months.length) {
+                                    return Text(months[idx],
+                                        style: TextStyle(
+                                            fontSize: 9,
+                                            color: scheme.onSurfaceVariant));
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                            rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('Erro: $e')),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 32),
-            Text('Progresso dos Objectivos',
+            const SizedBox(height: 28),
+
+            // ---- Progresso dos objectivos ----
+            Text('Progresso dos objectivos',
                 style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             goalsProgressAsync.when(
               data: (goals) {
-                if (goals.isEmpty) {
-                  return const Text('Nenhum objectivo.');
+                final activos = goals.where((g) => g.archivedAt == null).toList()
+                  ..sort((a, b) => b.progressPercentage.compareTo(a.progressPercentage));
+                if (activos.isEmpty) {
+                  return Text('Nenhum objectivo activo.',
+                      style: TextStyle(color: scheme.onSurfaceVariant));
                 }
-                return Column(
-                  children: goals.map((goal) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(goal.title,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          LinearProgressIndicator(
-                            value: goal.progressPercentage / 100,
-                            minHeight: 8,
-                            backgroundColor: Colors.grey.shade300,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                goal.progressPercentage >= 100
-                                    ? Colors.green
-                                    : Colors.blue),
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        for (final goal in activos) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(goal.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('${goal.progressPercentage}%',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: goal.progressPercentage >= 100
+                                          ? SemanticColors.receita
+                                          : scheme.primary)),
+                            ],
                           ),
-                          Text('${goal.progressPercentage}%',
-                              style: const TextStyle(fontSize: 12)),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: goal.progressPercentage / 100,
+                              minHeight: 7,
+                              backgroundColor: scheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  goal.progressPercentage >= 100
+                                      ? SemanticColors.receita
+                                      : scheme.primary),
+                            ),
+                          ),
+                          if (goal != activos.last) const SizedBox(height: 16),
                         ],
-                      ),
-                    );
-                  }).toList(),
+                      ],
+                    ),
+                  ),
                 );
               },
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Erro: $e')),
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _StatCard({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 15, color: color)),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Legenda extends StatelessWidget {
+  final Color cor;
+  final String texto;
+  const _Legenda({required this.cor, required this.texto});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: cor, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(texto,
+            style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      ],
     );
   }
 }

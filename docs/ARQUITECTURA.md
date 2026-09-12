@@ -40,7 +40,8 @@ lib/
 ├─ services/                  Lógica sem UI (ver §6 e §10)
 ├─ screens/                   Ecrãs (ver §4)
 ├─ theme/
-│  └─ pulso_theme.dart          Paleta (`PulsoColors`) + temas claro/escuro (`PulsoTheme`)
+│  ├─ pulso_theme.dart          Paleta (`PulsoColors`) + temas claro/escuro (`PulsoTheme`)
+│  └─ semantic_colors.dart      `SemanticColors.receita`/`despesa` (verde/vermelho, partilhado)
 └─ widgets/
    └─ confirm_dialog.dart      Diálogo genérico de confirmação de eliminação
 
@@ -164,11 +165,11 @@ Sempre que mudares colunas:
 | `report_detail_screen.dart` | StatelessWidget | Relatório de um mês (resumo + concluídos + progresso dos activos) + exportar PDF |
 | `tasks_screen.dart` | ConsumerStateful | Tarefas em **cartões** (cor por prioridade), **agrupadas** por Atrasadas / Hoje / Esta semana / Depois / Sem data + Concluídas; secção própria **"Hábitos"** no topo para as tarefas-hábito activas. **Checkbox** para concluir/reabrir tarefas normais (recalcula o objectivo ligado); botão **"Marcar hoje"** nos hábitos. Chip de prioridade, texto de vencimento/período, objectivo. **Seleção múltipla** (concluir/eliminar em lote), painel de **filtros** (prioridade, objectivo, mostrar concluídas), swipe para eliminar |
 | `add_task_screen.dart` | ConsumerStateful | Formulário criar/editar tarefa: título, descrição, prioridade, **objectivo (opcional)**, interruptor **"Tarefa-hábito"** (editável mesmo depois de criada — hábito→normal pede confirmação e apaga os check-ins) que troca **concluída + data** por **início / fim / hora do lembrete diário**. Ao guardar recalcula o progresso do objectivo novo e do antigo |
-| `finance_screen.dart` | ConsumerStateful | Saldo + **banner** de orçamentos ultrapassados + secção **"Gastos deste mês"** (barras por categoria) + lista filtrável (tipo, categoria, mês, ano). Toque numa transação = editar; swipe = eliminar. Menu → Orçamentos / Relatórios. Botão de push para Supabase com feedback |
+| `finance_screen.dart` | ConsumerStateful | Banner de **saldo** arredondado + **banner** de orçamentos ultrapassados + secção **"Gastos deste mês"** (barras por categoria) + lista filtrável (tipo, categoria, mês, ano) com ícone circular colorido por transação. Toque numa transação = editar; swipe = eliminar. Menu → Orçamentos / Relatórios. Botão de push para Supabase com feedback |
 | `add_transaction_screen.dart` | ConsumerStateful | Formulário **criar E editar** transação (recebe `tx?`) |
 | `budgets_screen.dart` | ConsumerWidget | Orçamentos mensais por categoria: definir/editar/eliminar limite, barra de progresso do gasto do mês, marca de ultrapassado |
-| `stats_screen.dart` | ConsumerWidget | Gráfico de barras mensal + progresso dos objectivos + botão de pull do Supabase |
-| `settings_screen.dart` | ConsumerWidget | Tema, moeda, backup/restauro JSON (com confirmação), interruptor de notificações, **acesso a notificações bancárias** (Android) |
+| `stats_screen.dart` | ConsumerWidget | Cartões de resumo (Saldo, Receitas/Despesas do mês) + gráfico de barras mensal (num `Card`, com legenda) + progresso dos objectivos + botão de pull do Supabase |
+| `settings_screen.dart` | ConsumerWidget | Agrupado em secções com `Card` (Conta, Aparência, Dados, Notificações); tema, moeda, backup/restauro JSON (com confirmação), interruptor de notificações, **acesso a notificações bancárias** (Android) |
 
 ---
 
