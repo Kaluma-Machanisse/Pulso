@@ -7,6 +7,7 @@ import '../providers/task_providers.dart';
 import '../services/goal_reminder_service.dart';
 import '../services/goal_archive_service.dart';
 import '../services/goal_progress_service.dart';
+import '../services/goal_term_service.dart';
 
 class AddGoalScreen extends ConsumerStatefulWidget {
   final Goal? goal;
@@ -23,9 +24,7 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
   late TextEditingController _descriptionController;
   late String _category;
   late DateTime _targetDate;
-  late int _progress;
   late String _importance;
-  late String _term;
 
   final List<String> _categories = [
     'Geral',
@@ -37,7 +36,6 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
 
   // Ordem = frequência crescente de lembretes por semana.
   final List<String> _importances = ['Baixa', 'Média', 'Alta', 'Crítica'];
-  final List<String> _terms = ['Curto prazo', 'Longo prazo'];
 
   static const Map<String, String> _importanceHint = {
     'Baixa': '1 lembrete por semana',
@@ -55,9 +53,7 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
         TextEditingController(text: goal?.description ?? '');
     _category = goal?.category ?? 'Geral';
     _targetDate = goal?.targetDate ?? DateTime.now().add(const Duration(days: 30));
-    _progress = goal?.progressPercentage ?? 0;
     _importance = goal?.importance ?? 'Média';
-    _term = goal?.term ?? 'Curto prazo';
   }
 
   @override
@@ -77,8 +73,10 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
       final autoProgresso = _linkedTasks.isNotEmpty;
+      final termo = GoalTermService.compute(_targetDate);
+
       if (widget.goal == null) {
-        // Criação – campos não‑nullable passam directo, nullable usam Value
+        // Criação — sem tarefas ainda, começa sempre a 0%.
         final newGoal = GoalsCompanion.insert(
           title: _titleController.text,
           description: _descriptionController.text.isNotEmpty
@@ -86,13 +84,14 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
               : const Value.absent(),
           category: Value(_category),
           targetDate: Value(_targetDate),
-          progressPercentage: Value(_progress),
+          progressPercentage: const Value(0),
           importance: Value(_importance),
-          term: Value(_term),
+          term: Value(termo),
         );
         await ref.read(addGoalProvider(newGoal).future);
       } else {
-        // Edição – copyWith: não‑nullable directo, nullable com Value<T?>
+        // Edição — o progresso nunca é escolhido aqui: mantém-se o actual e
+        // só o GoalProgressService (via tarefas) o pode mudar.
         final updatedGoal = widget.goal!.copyWith(
           title: _titleController.text,
           description: Value<String?>(
@@ -102,10 +101,8 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
           ),
           category: _category,
           targetDate: Value<DateTime?>(_targetDate),
-          // Com tarefas ligadas o progresso é automático — não se sobrepõe.
-          progressPercentage: autoProgresso ? widget.goal!.progressPercentage : _progress,
           importance: _importance,
-          term: _term,
+          term: termo,
         );
         await ref.read(updateGoalProvider(updatedGoal).future);
       }
@@ -128,14 +125,16 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
         ? const <Task>[]
         : (ref.watch(tasksByGoalProvider(id)).valueOrNull ?? const <Task>[]);
 
-    // Com tarefas ligadas → progresso automático (slider escondido).
-    if (tasks.isNotEmpty) {
-      final done = tasks.where((t) => t.isCompleted).length;
-      final pct = (done / tasks.length * 100).round();
+    final scheme = Theme.of(context).colorScheme;
+
+    if (tasks.isEmpty) {
+      // Sem tarefas ligadas: progresso fica a 0% (ou o que já estava
+      // guardado, se for uma edição), sempre automático — nunca editável.
+      final pct = widget.goal?.progressPercentage ?? 0;
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: scheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -143,46 +142,60 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.link, size: 18),
+                Icon(Icons.link_off, size: 18, color: scheme.onSurfaceVariant),
                 const SizedBox(width: 8),
-                Text('Progresso automático: $pct%',
+                Text('Progresso: $pct%',
                     style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 6),
-            Text('$done de ${tasks.length} tarefas concluídas',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(value: pct / 100, minHeight: 8),
+            Text(
+              'Sem tarefas ligadas — o progresso não é escolhido manualmente. '
+              'Liga uma tarefa (ou hábito) a este objectivo para o progresso '
+              'avançar sozinho.',
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
           ],
         ),
       );
     }
 
-    // Sem tarefas → progresso manual.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Progresso: $_progress%'),
-        Slider(
-          value: _progress.toDouble(),
-          min: 0,
-          max: 100,
-          divisions: 10,
-          label: '$_progress%',
-          onChanged: (val) => setState(() => _progress = val.round()),
-        ),
-      ],
+    final done = tasks.where((t) => t.isCompleted).length;
+    final pct = (done / tasks.length * 100).round();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.link, size: 18),
+              const SizedBox(width: 8),
+              Text('Progresso automático: $pct%',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('$done de ${tasks.length} tarefas concluídas',
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(value: pct / 100, minHeight: 8),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final termoActual = GoalTermService.compute(_targetDate);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.goal == null ? 'Novo Objectivo' : 'Editar Objectivo'),
@@ -227,20 +240,13 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _term,
-              items: _terms
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                  .toList(),
-              onChanged: (val) => setState(() => _term = val!),
-              decoration: const InputDecoration(labelText: 'Prazo'),
-            ),
-            const SizedBox(height: 16),
             ListTile(
+              contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.calendar_today),
               title: Text(
                 'Data alvo: ${_targetDate.day}/${_targetDate.month}/${_targetDate.year}',
               ),
+              subtitle: Text('Prazo: $termoActual (calculado pela data)'),
               onTap: () async {
                 final picked = await showDatePicker(
                   context: context,

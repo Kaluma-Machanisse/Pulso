@@ -154,6 +154,8 @@ class GoalsScreen extends ConsumerWidget {
 
             final curto = goals.where((g) => g.term == 'Curto prazo').toList()
               ..sort(ordenar);
+            final medio = goals.where((g) => g.term == 'Médio prazo').toList()
+              ..sort(ordenar);
             final longo = goals.where((g) => g.term == 'Longo prazo').toList()
               ..sort(ordenar);
 
@@ -169,6 +171,10 @@ class GoalsScreen extends ConsumerWidget {
                 if (curto.isNotEmpty) ...[
                   const _SectionHeader('Curto prazo'),
                   ...curto.map(card),
+                ],
+                if (medio.isNotEmpty) ...[
+                  const _SectionHeader('Médio prazo'),
+                  ...medio.map(card),
                 ],
                 if (longo.isNotEmpty) ...[
                   const _SectionHeader('Longo prazo'),

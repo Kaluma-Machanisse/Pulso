@@ -404,6 +404,38 @@ percentagem de dias marcados.
 
 ---
 
+# Prazo automático + progresso não editável — Setembro 2026
+
+## Objectivos: prazo calculado, não escolhido
+
+- **Novo** `goal_term_service.dart`: `compute(targetDate)` devolve
+  `Curto prazo` (≤30 dias), `Médio prazo` (≤~6 meses) ou `Longo prazo`
+  (mais); `recomputeAll(ref)` actualiza todos os objectivos activos no
+  arranque, para um objectivo "amadurecer" sozinho (Longo→Médio→Curto) à
+  medida que a data se aproxima.
+- `add_goal_screen.dart`: o dropdown manual de Prazo foi removido; mostra
+  antes o prazo calculado como texto por baixo da data-alvo.
+- `goals_screen.dart`: nova secção **"Médio prazo"** entre Curto e Longo.
+- `home_screen.dart`: `GoalTermService.recomputeAll` no arranque.
+- Sem alteração de schema (a coluna `term` já existia; só mudou como o valor
+  é decidido).
+
+## Objectivos: progresso deixa de poder ser editado à mão
+
+- `add_goal_screen.dart`: removido o slider manual, em criação e edição.
+  Objectivo novo começa sempre a 0%; a edição nunca mexe no valor guardado.
+- Sem tarefas ligadas, o cartão mostra "Sem tarefas ligadas" e o valor fica
+  congelado (0% num objectivo novo) até se ligar uma tarefa/hábito.
+- `GoalProgressService` continua a ser o único a mudar
+  `progressPercentage`, a partir das tarefas ligadas.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK. Sem migração de schema.
+
+---
+
 # Ordem dos separadores — Setembro 2026
 
 `home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de

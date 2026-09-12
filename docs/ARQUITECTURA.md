@@ -61,10 +61,10 @@ assets/icon/                   Fonte do ícone da app (gerado por test/gen_icons
 | description | text? | |
 | targetDate | dateTime? | data alvo |
 | category | text | default `Geral` (Saúde, Financeiro, Carreira, Pessoal) |
-| progressPercentage | int | 0–100. **Automático** quando o objectivo tem tarefas ligadas (= % de tarefas concluídas); manual (slider) caso não tenha |
+| progressPercentage | int | 0–100. **Nunca editável na UI.** Automático quando o objectivo tem tarefas ligadas (= % de tarefas concluídas); sem tarefas fica a 0% (ou congelado no valor actual em edições antigas) |
 | isCompleted | bool | default `false` |
 | importance | text | **v2** — `Baixa`/`Média`/`Alta`/`Crítica`; define a frequência de lembretes (1/2/3/4 por semana). Default `Média` |
-| term | text | **v2** — `Curto prazo`/`Longo prazo`; organização/filtro. Default `Curto prazo` |
+| term | text | **v2** — `Curto prazo`/`Médio prazo`/`Longo prazo`. **Calculado, não escolhido**: `GoalTermService.compute(targetDate)` (≤30d Curto, ≤~6 meses Médio, senão Longo), recalculado no arranque para "amadurecer" com o tempo |
 | archivedAt | dateTime? | **v3** — preenchido quando o objectivo chega a 100%. Se `!= null`, sai da lista principal (fica em "Objectivos arquivados"). Não se apagam objectivos concluídos |
 
 ### Reports (Relatórios mensais) — v3/v4
@@ -198,6 +198,7 @@ Sempre que mudares colunas:
 | `auth_service.dart` | `signIn()` / `signUp()` / `signOut()`, `isLoggedIn`, `currentUser` — Supabase Auth real, sem credenciais na app |
 | `notification_service.dart` | `initialize()` — canal Android + fuso horário (`Africa/Maputo`); `showNotification()` imediata; `scheduleAt()` agenda uma única no futuro (`zonedSchedule`, modo inexacto); `cancel()`/`cancelRange()` |
 | `goal_reminder_service.dart` | Agenda os lembretes de cada objectivo conforme a **importância** (1–4/semana) + 1 no dia da data-alvo; janela de 90 dias; `rescheduleForGoal`, `rescheduleAll` (arranque), `cancelForGoal` (ao eliminar). Ver §10 |
+| `goal_term_service.dart` | Calcula o **prazo** (Curto/Médio/Longo) a partir da data-alvo; `recomputeAll` no arranque actualiza todos os objectivos activos |
 | `goal_archive_service.dart` | Arquiva objectivos a 100% (`archivedAt`), desarquiva se o progresso descer; `apply()` / `sweep()` |
 | `goal_progress_service.dart` | Progresso automático = tarefas concluídas ÷ totais do objectivo. `recompute(goalId)` (após mexer numa tarefa), `recomputeAll()` (arranque). Chama `GoalArchiveService.apply` + `rescheduleForGoal` |
 | `report_service.dart` | `MonthlyReport` (objectivos concluídos no mês + activos), gera os meses em falta no arranque, retenção de 1 ano |
@@ -371,11 +372,16 @@ intervalo `[base, base+99]`.
 
 ### Progresso automático a partir das tarefas
 
-- Se um objectivo tem **tarefas ligadas** (`Tasks.goalId`), o progresso deixa
-  de ser manual: `progressPercentage = concluídas ÷ totais` (arredondado).
+- O progresso **nunca é escolhido pelo utilizador** — nem ao criar, nem ao
+  editar. `add_goal_screen` só mostra um cartão informativo.
+- Se um objectivo tem **tarefas ligadas** (`Tasks.goalId`), o progresso é a
+  **média da percentagem de cada tarefa** (tarefa normal 0/100%; hábito =
+  dias feitos ÷ dias do período). Ver §12 e o serviço `goal_progress_service.dart`.
 - `GoalProgressService.recompute(goalId)` corre sempre que uma tarefa desse
-  objectivo é criada/editada/concluída/eliminada; `recomputeAll()` no arranque.
-- Sem tarefas ligadas, o slider manual de `add_goal_screen` continua a valer.
+  objectivo é criada/editada/concluída/eliminada (ou tem um check-in);
+  `recomputeAll()` no arranque.
+- Sem tarefas ligadas, fica a 0% num objectivo novo (ou congelado no valor
+  antigo, para objectivos criados antes desta mudança).
 - O progresso automático encadeia com o arquivo: 100% → arquiva.
 
 ### Arquivo automático

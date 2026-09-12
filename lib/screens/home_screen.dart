@@ -8,6 +8,7 @@ import '../services/reminder_service.dart';
 import '../services/goal_reminder_service.dart';
 import '../services/goal_archive_service.dart';
 import '../services/goal_progress_service.dart';
+import '../services/goal_term_service.dart';
 import '../services/task_reminder_service.dart';
 import '../services/habit_service.dart';
 import '../services/report_service.dart';
@@ -50,6 +51,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       // Fecha sozinhos os hábitos cujo período já terminou.
       await HabitService.sweepClose(ref);
+      // O prazo dos objectivos "amadurece" sozinho com a proximidade da data.
+      await GoalTermService.recomputeAll(ref);
       // Progresso dos objectivos com tarefas ligadas = % de tarefas concluídas.
       await GoalProgressService.recomputeAll(ref);
       // Objectivos a 100% são arquivados (não apagados).
