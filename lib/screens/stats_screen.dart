@@ -7,11 +7,20 @@ import '../providers/settings_providers.dart';
 import '../services/sync_service.dart';
 import '../theme/semantic_colors.dart';
 
-class StatsScreen extends ConsumerWidget {
+enum _TipoGrafico { barras, circular }
+
+class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends ConsumerState<StatsScreen> {
+  _TipoGrafico _tipo = _TipoGrafico.barras;
+
+  @override
+  Widget build(BuildContext context) {
     final monthlyStatsAsync = ref.watch(monthlyStatsProvider);
     final goalsProgressAsync = ref.watch(goalsProgressProvider);
     final balanceAsync = ref.watch(balanceProvider);
@@ -86,8 +95,33 @@ class StatsScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // ---- Gráfico mensal ----
-            Text('Receitas vs despesas',
-                style: Theme.of(context).textTheme.titleMedium),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Receitas vs despesas',
+                      style: Theme.of(context).textTheme.titleMedium),
+                ),
+                SegmentedButton<_TipoGrafico>(
+                  showSelectedIcon: false,
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  segments: const [
+                    ButtonSegment(
+                      value: _TipoGrafico.barras,
+                      icon: Icon(Icons.bar_chart, size: 18),
+                    ),
+                    ButtonSegment(
+                      value: _TipoGrafico.circular,
+                      icon: Icon(Icons.pie_chart, size: 18),
+                    ),
+                  ],
+                  selected: {_tipo},
+                  onSelectionChanged: (s) => setState(() => _tipo = s.first),
+                ),
+              ],
+            ),
             const SizedBox(height: 4),
             Row(
               children: [
@@ -107,6 +141,9 @@ class StatsScreen extends ConsumerWidget {
                       if (monthly.isEmpty) {
                         return const Center(
                             child: Text('Sem transações registadas.'));
+                      }
+                      if (_tipo == _TipoGrafico.circular) {
+                        return _GraficoCircular(monthly: monthly, moeda: moeda);
                       }
                       final months = monthly.keys.toList()..sort();
                       // As barras são lado a lado, não empilhadas: o topo do
@@ -321,6 +358,75 @@ class _Legenda extends StatelessWidget {
             style: TextStyle(
                 fontSize: 12,
                 color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      ],
+    );
+  }
+}
+
+class _GraficoCircular extends StatelessWidget {
+  final Map<String, Map<String, double>> monthly;
+  final String moeda;
+  const _GraficoCircular({required this.monthly, required this.moeda});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final receitas =
+        monthly.values.fold<double>(0, (s, m) => s + (m['receitas'] ?? 0));
+    final despesas =
+        monthly.values.fold<double>(0, (s, m) => s + (m['despesas'] ?? 0));
+    final total = receitas + despesas;
+
+    if (total <= 0) {
+      return const Center(child: Text('Sem valores para mostrar.'));
+    }
+
+    final pctReceitas = (receitas / total * 100);
+    final pctDespesas = (despesas / total * 100);
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        PieChart(
+          PieChartData(
+            sectionsSpace: 3,
+            centerSpaceRadius: 56,
+            sections: [
+              PieChartSectionData(
+                value: receitas,
+                color: SemanticColors.receita,
+                radius: 44,
+                showTitle: pctReceitas >= 8,
+                title: '${pctReceitas.toStringAsFixed(0)}%',
+                titleStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+              PieChartSectionData(
+                value: despesas,
+                color: SemanticColors.despesa,
+                radius: 44,
+                showTitle: pctDespesas >= 8,
+                title: '${pctDespesas.toStringAsFixed(0)}%',
+                titleStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${total.toStringAsFixed(0)} $moeda',
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.bold)),
+            Text('movimentado (total)',
+                style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
+          ],
+        ),
       ],
     );
   }

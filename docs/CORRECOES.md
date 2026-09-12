@@ -519,6 +519,23 @@ Auditoria dos ecrãs que ainda não tinham recebido o tratamento de identidade
 
 ---
 
+# Estatísticas: alternar entre gráfico de barras e circular — Setembro 2026
+
+`stats_screen.dart` passa a `ConsumerStatefulWidget`: um `SegmentedButton`
+junto ao título "Receitas vs despesas" alterna entre:
+
+- **Barras** (como antes) — evolução mensal.
+- **Circular** (novo `_GraficoCircular`) — donut com a percentagem de
+  receitas vs despesas somadas em todo o histórico, e o total movimentado no
+  centro.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK.
+
+---
+
 # Ordem dos separadores — Setembro 2026
 
 `home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de
