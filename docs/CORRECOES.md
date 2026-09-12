@@ -542,10 +542,11 @@ A secção "Progresso dos objectivos" ganha o mesmo alternador barras/circular
 da secção financeira, além da lista detalhada que já existia (mantida por
 baixo do gráfico):
 
-- **Barras** (`_GoalsBars`) — até 8 objectivos activos, uma barra por
-  objectivo com a % de progresso; cor pelo prazo (a mesma paleta do ponto de
+- **Barras** (`_GoalsBars`) — **agrupado por prazo**: 3 barras (Curto/Médio/
+  Longo), cada uma com o **progresso médio** dos objectivos desse grupo e a
+  contagem por baixo do rótulo; cor pelo prazo (mesma paleta do ponto de
   prazo em Objectivos: laranja=Curto, amarelo=Médio, verde=Longo), verde de
-  sucesso a partir de 100%.
+  sucesso quando a média chega a 100%.
 - **Circular** (`_GoalsCircular`) — donut com a contagem de objectivos por
   **prazo** (Curto/Médio/Longo), mesma paleta de cores, com legenda ao lado.
 

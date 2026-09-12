@@ -496,9 +496,20 @@ class _GoalsBars extends StatelessWidget {
   final ColorScheme scheme;
   const _GoalsBars({required this.goals, required this.scheme});
 
+  static const _ordem = ['Curto prazo', 'Médio prazo', 'Longo prazo'];
+  static const _rotulo = {
+    'Curto prazo': 'Curto',
+    'Médio prazo': 'Médio',
+    'Longo prazo': 'Longo',
+  };
+
   @override
   Widget build(BuildContext context) {
-    final mostrados = goals.take(8).toList();
+    // Agrupado por prazo: uma barra por grupo, com o progresso médio.
+    final grupos = <String, List<Goal>>{
+      for (final t in _ordem) t: goals.where((g) => g.term == t).toList(),
+    };
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
@@ -510,16 +521,19 @@ class _GoalsBars extends StatelessWidget {
               FlLine(color: scheme.outlineVariant, strokeWidth: 1),
         ),
         borderData: FlBorderData(show: false),
-        barGroups: List.generate(mostrados.length, (i) {
-          final g = mostrados[i];
+        barGroups: List.generate(_ordem.length, (i) {
+          final term = _ordem[i];
+          final lista = grupos[term]!;
+          final media = lista.isEmpty
+              ? 0.0
+              : lista.map((g) => g.progressPercentage).reduce((a, b) => a + b) /
+                  lista.length;
           return BarChartGroupData(x: i, barRods: [
             BarChartRodData(
-              toY: g.progressPercentage.toDouble(),
-              width: 18,
+              toY: media,
+              width: 34,
               borderRadius: BorderRadius.circular(4),
-              color: g.progressPercentage >= 100
-                  ? SemanticColors.receita
-                  : _corPorPrazo(g.term),
+              color: media >= 100 ? SemanticColors.receita : _corPorPrazo(term),
             ),
           ]);
         }),
@@ -537,18 +551,24 @@ class _GoalsBars extends StatelessWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 32,
+              reservedSize: 36,
               getTitlesWidget: (value, meta) {
                 final idx = value.toInt();
-                if (idx < 0 || idx >= mostrados.length) return const Text('');
-                final titulo = mostrados[idx].title;
-                final curto =
-                    titulo.length > 8 ? '${titulo.substring(0, 7)}…' : titulo;
+                if (idx < 0 || idx >= _ordem.length) return const Text('');
+                final term = _ordem[idx];
+                final n = grupos[term]!.length;
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(curto,
-                      style: TextStyle(
-                          fontSize: 9, color: scheme.onSurfaceVariant)),
+                  child: Column(
+                    children: [
+                      Text(_rotulo[term]!,
+                          style: TextStyle(
+                              fontSize: 10, color: scheme.onSurfaceVariant)),
+                      Text('($n)',
+                          style: TextStyle(
+                              fontSize: 9, color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
                 );
               },
             ),
