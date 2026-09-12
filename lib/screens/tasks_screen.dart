@@ -88,7 +88,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     for (final t in alvo) {
       final u = t.copyWith(isCompleted: true);
       await ref.read(updateTaskProvider(u).future);
-      await TaskReminderService.rescheduleForTask(u);
+      await TaskReminderService.rescheduleForTask(ref, u);
     }
     await _recompute(alvo.map((t) => t.goalId));
     ref.read(taskSelectionProvider.notifier).clear();
@@ -347,7 +347,7 @@ class _TaskCard extends ConsumerWidget {
   Future<void> _setCompleted(WidgetRef ref, bool v) async {
     final u = task.copyWith(isCompleted: v);
     await ref.read(updateTaskProvider(u).future);
-    await TaskReminderService.rescheduleForTask(u);
+    await TaskReminderService.rescheduleForTask(ref, u);
     await GoalProgressService.recompute(ref, task.goalId);
   }
 
@@ -574,6 +574,9 @@ class _HabitCard extends ConsumerWidget {
     final cor = priorityColor(task.priority);
     final checkinsAsync = ref.watch(habitCheckinsProvider(task.id));
     final checkins = checkinsAsync.valueOrNull ?? const [];
+    final nLembretes =
+        (ref.watch(habitRemindersProvider(task.id)).valueOrNull ?? const [])
+            .length;
 
     final totalDias = HabitService.totalDias(task);
     final feitos = checkins.length;
@@ -660,6 +663,7 @@ class _HabitCard extends ConsumerWidget {
                             : '${task.habitStartDate?.day}/${task.habitStartDate?.month} → '
                                 '${task.habitEndDate?.day}/${task.habitEndDate?.month}'
                                 '  ·  $feitos de $totalDias dias'
+                                '  ·  $nLembretes lembrete${nLembretes == 1 ? '' : 's'}/dia'
                                 '${goalName != null ? '  ·  $goalName' : ''}',
                         style: TextStyle(
                             fontSize: 12, color: scheme.onSurfaceVariant),

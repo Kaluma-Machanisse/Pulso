@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
 import '../database/database.dart';
+import '../providers/database_provider.dart';
 import '../providers/task_providers.dart';
 import '../providers/goal_providers.dart';
 import '../services/goal_progress_service.dart';
@@ -29,7 +30,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
   bool _isHabit = false;
   late DateTime _habitStart;
   late DateTime _habitEnd;
-  TimeOfDay _reminderTime = const TimeOfDay(hour: 8, minute: 0);
+  List<TimeOfDay> _reminderTimes = [const TimeOfDay(hour: 8, minute: 0)];
 
   final List<String> _priorities = ['Alta', 'Média', 'Baixa'];
 
@@ -47,10 +48,20 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
     _isHabit = task?.isHabit ?? false;
     _habitStart = task?.habitStartDate ?? DateTime.now();
     _habitEnd = task?.habitEndDate ?? DateTime.now().add(const Duration(days: 29));
-    if (task?.reminderHour != null) {
-      _reminderTime =
-          TimeOfDay(hour: task!.reminderHour!, minute: task.reminderMinute ?? 0);
+
+    if (task != null && task.isHabit) {
+      _carregarLembretes(task.id);
     }
+  }
+
+  Future<void> _carregarLembretes(int taskId) async {
+    final db = ref.read(databaseProvider);
+    final rows = await HabitService.getReminders(db, taskId);
+    if (!mounted || rows.isEmpty) return;
+    setState(() {
+      _reminderTimes = rows.map((r) => TimeOfDay(hour: r.hour, minute: r.minute)).toList()
+        ..sort((a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+    });
   }
 
   @override
@@ -68,11 +79,19 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
       ));
       return;
     }
+    if (_isHabit && _reminderTimes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Adiciona pelo menos um lembrete diário.'),
+      ));
+      return;
+    }
 
     final oldGoalId = widget.task?.goalId;
     final eraHabit = widget.task?.isHabit ?? false;
     final tornouSeNormal = eraHabit && !_isHabit;
     final tornouSeHabito = !eraHabit && _isHabit;
+
+    int taskId;
 
     if (widget.task == null) {
       final newTask = TasksCompanion.insert(
@@ -87,12 +106,10 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
         isHabit: Value(_isHabit),
         habitStartDate: _isHabit ? Value(_habitStart) : const Value.absent(),
         habitEndDate: _isHabit ? Value(_habitEnd) : const Value.absent(),
-        reminderHour: _isHabit ? Value(_reminderTime.hour) : const Value.absent(),
-        reminderMinute:
-            _isHabit ? Value(_reminderTime.minute) : const Value.absent(),
       );
-      await ref.read(addTaskProvider(newTask).future);
+      taskId = await ref.read(addTaskProvider(newTask).future);
     } else {
+      taskId = widget.task!.id;
       final updatedTask = widget.task!.copyWith(
         title: _titleController.text,
         description: Value<String?>(
@@ -109,15 +126,24 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
         isHabit: _isHabit,
         habitStartDate: Value<DateTime?>(_isHabit ? _habitStart : null),
         habitEndDate: Value<DateTime?>(_isHabit ? _habitEnd : null),
-        reminderHour: Value<int?>(_isHabit ? _reminderTime.hour : null),
-        reminderMinute: Value<int?>(_isHabit ? _reminderTime.minute : null),
         habitClosed: tornouSeHabito ? false : widget.task!.habitClosed,
       );
       await ref.read(updateTaskProvider(updatedTask).future);
 
       if (tornouSeNormal) {
-        await HabitService.limparCheckins(ref, widget.task!.id);
+        await HabitService.limparCheckins(ref, taskId);
       }
+    }
+
+    // Lembretes diários (só faz sentido para hábitos).
+    if (_isHabit) {
+      await HabitService.setReminders(
+        ref,
+        taskId,
+        _reminderTimes.map((t) => (t.hour, t.minute)).toList(),
+      );
+    } else if (tornouSeNormal) {
+      await HabitService.setReminders(ref, taskId, const []);
     }
 
     // Actualiza o progresso do(s) objectivo(s) afectado(s) e reagenda os
@@ -152,11 +178,28 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
     });
   }
 
-  Future<void> _escolherHora() async {
-    final picked =
-        await showTimePicker(context: context, initialTime: _reminderTime);
-    if (picked != null) setState(() => _reminderTime = picked);
+  Future<void> _adicionarLembrete() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 20, minute: 0),
+    );
+    if (picked == null) return;
+    final jaExiste = _reminderTimes
+        .any((t) => t.hour == picked.hour && t.minute == picked.minute);
+    if (jaExiste) return;
+    setState(() {
+      _reminderTimes = [..._reminderTimes, picked]
+        ..sort((a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+    });
   }
+
+  void _removerLembrete(TimeOfDay t) {
+    if (_reminderTimes.length <= 1) return; // pelo menos um lembrete
+    setState(() => _reminderTimes = _reminderTimes.where((x) => x != t).toList());
+  }
+
+  String _fmt(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -262,12 +305,31 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
                     '  (${_habitEnd.difference(_habitStart).inDays + 1} dias)'),
                 onTap: () => _escolherData(inicio: false),
               ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.notifications_active_outlined),
-                title: Text(
-                    'Lembrete diário às ${_reminderTime.hour.toString().padLeft(2, '0')}:${_reminderTime.minute.toString().padLeft(2, '0')}'),
-                onTap: _escolherHora,
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.notifications_active_outlined, size: 20),
+                  const SizedBox(width: 12),
+                  const Expanded(child: Text('Lembretes diários')),
+                  TextButton.icon(
+                    onPressed: _adicionarLembrete,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Adicionar'),
+                  ),
+                ],
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final t in _reminderTimes)
+                    Chip(
+                      label: Text(_fmt(t)),
+                      onDeleted: _reminderTimes.length > 1
+                          ? () => _removerLembrete(t)
+                          : null,
+                    ),
+                ],
               ),
             ] else ...[
               const SizedBox(height: 8),

@@ -8,10 +8,10 @@ final tasksProvider = StreamProvider<List<Task>>((ref) {
   return db.select(db.tasks).watch();
 });
 
-// Adicionar tarefa
-final addTaskProvider = FutureProvider.family<void, TasksCompanion>((ref, task) async {
+// Adicionar tarefa — devolve o id novo (precisa-se para ligar lembretes de hábito)
+final addTaskProvider = FutureProvider.family<int, TasksCompanion>((ref, task) async {
   final db = ref.read(databaseProvider);
-  await db.into(db.tasks).insert(task);
+  return db.into(db.tasks).insert(task);
 });
 
 // Atualizar tarefa
@@ -37,5 +37,13 @@ final habitCheckinsProvider =
     StreamProvider.family<List<HabitCheckin>, int>((ref, taskId) {
   final db = ref.watch(databaseProvider);
   return (db.select(db.habitCheckins)..where((c) => c.taskId.equals(taskId)))
+      .watch();
+});
+
+// Lembretes diários de uma tarefa-hábito (stream reativa)
+final habitRemindersProvider =
+    StreamProvider.family<List<HabitReminder>, int>((ref, taskId) {
+  final db = ref.watch(databaseProvider);
+  return (db.select(db.habitReminders)..where((r) => r.taskId.equals(taskId)))
       .watch();
 });

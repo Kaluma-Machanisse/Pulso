@@ -457,6 +457,42 @@ tarefa já existir.
 
 ---
 
+# Vários lembretes diários por hábito — Setembro 2026
+
+Só nas tarefas-hábito (não nos objectivos): em vez de uma hora única, dá para
+adicionar **vários lembretes ao longo do dia** (ex.: 08:00 e 20:00).
+
+## Base de dados (schema v5 → v6)
+
+- Nova tabela `HabitReminders` (`taskId`, `hour`, `minute`) — um registo por
+  horário. `Tasks.reminderHour`/`reminderMinute` deixam de ser lidos para
+  agendar (ficam só como histórico, não removidos por não valer a pena migrar
+  dados só para apagar duas colunas).
+
+## Serviços
+
+- `habit_service.dart`: `getReminders`, `setReminders` (substitui a lista
+  completa — apagar + inserir).
+- `task_reminder_service.dart`: `_rescheduleHabit` passa a agendar **cada
+  lembrete de cada dia** do período (janela rolante de 90 dias). Faixa de ids
+  alargada para `700000 + taskId*1000` (até ~10 lembretes/dia cabem
+  confortavelmente). `rescheduleForTask` passa a receber `WidgetRef` (precisa
+  de consultar a tabela de lembretes).
+
+## UI
+
+- `add_task_screen.dart`: secção "Lembretes diários" com chips removíveis e
+  botão **"Adicionar"** (abre o seletor de hora); tem de ficar sempre com
+  pelo menos um.
+- `tasks_screen.dart`: o cartão do hábito mostra "N lembretes/dia".
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK; migração v5→v6 testada no Linux.
+
+---
+
 # Ordem dos separadores — Setembro 2026
 
 `home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de

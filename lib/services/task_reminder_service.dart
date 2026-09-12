@@ -8,7 +8,7 @@ DateTime _dia(DateTime d) => DateTime(d.year, d.month, d.day);
 /// Agenda os lembretes das tarefas.
 ///
 /// - Tarefas normais (com `dueDate`): véspera às 18:00 + dia às 09:00.
-/// - Tarefas-hábito: uma notificação por dia, à hora escolhida, do dia de
+/// - Tarefas-hábito: **um ou mais** lembretes por dia (`HabitReminders`), do
 ///   hoje até ao fim do período (janela rolante de 90 dias — `rescheduleAll`
 ///   no arranque estende sempre que for preciso).
 ///
@@ -19,7 +19,8 @@ class TaskReminderService {
   static const int _dueSlots = 10;
   static int _dueBase(int taskId) => 500000 + taskId * _dueSlots;
 
-  static const int _habitSlots = 100;
+  // 1000 ids por tarefa: até ~10 lembretes/dia durante os 90 dias da janela.
+  static const int _habitSlots = 1000;
   static const int _habitHorizonDays = 90;
   static int _habitBase(int taskId) => 700000 + taskId * _habitSlots;
 
@@ -30,10 +31,10 @@ class TaskReminderService {
     await NotificationService.cancelRange(hb, hb + _habitSlots - 1);
   }
 
-  static Future<void> rescheduleForTask(Task task) async {
+  static Future<void> rescheduleForTask(WidgetRef ref, Task task) async {
     await cancelForTask(task.id);
     if (task.isHabit) {
-      await _rescheduleHabit(task);
+      await _rescheduleHabit(ref, task);
     } else {
       await _rescheduleDueDate(task);
     }
@@ -59,19 +60,19 @@ class TaskReminderService {
     );
   }
 
-  static Future<void> _rescheduleHabit(Task task) async {
+  static Future<void> _rescheduleHabit(WidgetRef ref, Task task) async {
     if (task.isCompleted || task.habitClosed) return;
-    if (task.habitStartDate == null ||
-        task.habitEndDate == null ||
-        task.reminderHour == null) {
-      return;
-    }
+    if (task.habitStartDate == null || task.habitEndDate == null) return;
+
+    final db = ref.read(databaseProvider);
+    final reminders = await (db.select(db.habitReminders)
+          ..where((r) => r.taskId.equals(task.id)))
+        .get();
+    if (reminders.isEmpty) return;
 
     final now = DateTime.now();
     final fim = _dia(task.habitEndDate!);
     final limite = now.add(const Duration(days: _habitHorizonDays));
-    final hora = task.reminderHour!;
-    final minuto = task.reminderMinute ?? 0;
     final base = _habitBase(task.id);
 
     var dia = _dia(task.habitStartDate!).isAfter(_dia(now))
@@ -80,15 +81,18 @@ class TaskReminderService {
     var slot = 0;
 
     while (!dia.isAfter(fim) && dia.isBefore(limite) && slot < _habitSlots) {
-      final quando = DateTime(dia.year, dia.month, dia.day, hora, minuto);
-      if (quando.isAfter(now)) {
-        await NotificationService.scheduleAt(
-          id: base + slot,
-          title: 'Hora do hábito',
-          body: '"${task.title}" — marca quando fizeres.',
-          when: quando,
-        );
-        slot++;
+      for (final r in reminders) {
+        if (slot >= _habitSlots) break;
+        final quando = DateTime(dia.year, dia.month, dia.day, r.hour, r.minute);
+        if (quando.isAfter(now)) {
+          await NotificationService.scheduleAt(
+            id: base + slot,
+            title: 'Hora do hábito',
+            body: '"${task.title}" — marca quando fizeres.',
+            when: quando,
+          );
+          slot++;
+        }
       }
       dia = dia.add(const Duration(days: 1));
     }
@@ -98,7 +102,7 @@ class TaskReminderService {
     final db = ref.read(databaseProvider);
     final tasks = await db.select(db.tasks).get();
     for (final t in tasks) {
-      await rescheduleForTask(t);
+      await rescheduleForTask(ref, t);
     }
   }
 }

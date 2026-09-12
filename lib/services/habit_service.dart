@@ -74,6 +74,27 @@ class HabitService {
         .go();
   }
 
+  static Future<List<HabitReminder>> getReminders(
+      AppDatabase db, int taskId) {
+    return (db.select(db.habitReminders)..where((r) => r.taskId.equals(taskId)))
+        .get();
+  }
+
+  /// Substitui a lista de lembretes diários de uma tarefa-hábito.
+  static Future<void> setReminders(
+      WidgetRef ref, int taskId, List<(int hour, int minute)> horarios) async {
+    final db = ref.read(databaseProvider);
+    await (db.delete(db.habitReminders)..where((r) => r.taskId.equals(taskId)))
+        .go();
+    for (final h in horarios) {
+      await db.into(db.habitReminders).insert(HabitRemindersCompanion.insert(
+            taskId: taskId,
+            hour: h.$1,
+            minute: h.$2,
+          ));
+    }
+  }
+
   /// Fecha sozinho os hábitos cujo período já terminou: marca `habitClosed`
   /// e `isCompleted`, e actualiza o objectivo ligado com o resultado final.
   static Future<void> sweepClose(WidgetRef ref) async {

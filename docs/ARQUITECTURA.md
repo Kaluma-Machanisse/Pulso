@@ -52,7 +52,7 @@ assets/icon/                   Fonte do ícone da app (gerado por test/gen_icons
 
 ## 3. Modelo de dados (`lib/database/database.dart`)
 
-`schemaVersion = 5`. Seis tabelas, todas com `id` autoincrement.
+`schemaVersion = 6`. Sete tabelas, todas com `id` autoincrement.
 
 ### Goals (Objectivos)
 | Campo | Tipo | Notas |
@@ -97,7 +97,7 @@ assets/icon/                   Fonte do ícone da app (gerado por test/gen_icons
 | goalId | int? | referência a `Goals.id` (ver limitação em §7) |
 | isHabit | bool | **v5** — `true` = tarefa-hábito (check-in diário em vez de data única) |
 | habitStartDate / habitEndDate | dateTime? | **v5** — período do hábito |
-| reminderHour / reminderMinute | int? | **v5** — hora do lembrete diário |
+| reminderHour / reminderMinute | int? | **v5** — histórico; **já não é lido para agendar** (ver `HabitReminders`, v6) |
 | habitClosed | bool | **v5** — `true` quando o período terminou e foi fechado sozinho |
 
 ### HabitCheckins (check-ins diários) — v5
@@ -105,6 +105,12 @@ assets/icon/                   Fonte do ícone da app (gerado por test/gen_icons
 |---|---|---|
 | taskId | int | referência a `Tasks.id` |
 | date | dateTime | dia marcado (normalizado à meia-noite) |
+
+### HabitReminders (lembretes diários) — v6
+| Campo | Tipo | Notas |
+|---|---|---|
+| taskId | int | referência a `Tasks.id` |
+| hour / minute | int | um registo por horário; uma tarefa-hábito pode ter vários |
 
 ### Transactions (Transações)
 | Campo | Tipo | Notas |
@@ -173,7 +179,7 @@ Sempre que mudares colunas:
 | `database_provider.dart` | `databaseProvider` | Instância única de `AppDatabase` |
 | `goal_providers.dart` | `goalsProvider` (activos), `archivedGoalsProvider`, `addGoalProvider`, `updateGoalProvider`, `deleteGoalProvider` | CRUD de objectivos |
 | `goal_selection_provider.dart` | `goalSelectionProvider` (`Set<int>`) | Ids selecionados no modo de seleção múltipla (vazio = desligado) |
-| `task_providers.dart` | `tasksProvider` (stream), `addTaskProvider`, `updateTaskProvider`, `deleteTaskProvider`, `tasksByGoalProvider`, `habitCheckinsProvider` | CRUD de tarefas + check-ins dos hábitos |
+| `task_providers.dart` | `tasksProvider` (stream), `addTaskProvider` (devolve o id novo), `updateTaskProvider`, `deleteTaskProvider`, `tasksByGoalProvider`, `habitCheckinsProvider`, `habitRemindersProvider` | CRUD de tarefas + check-ins/lembretes dos hábitos |
 | `task_filter_provider.dart` | `taskFilterProvider` (prioridade, objectivo, mostrar concluídas) | Filtros do ecrã de Tarefas |
 | `task_selection_provider.dart` | `taskSelectionProvider` (`Set<int>`) | Ids selecionados no modo de seleção múltipla de Tarefas |
 | `transaction_providers.dart` | `transactionsProvider`, `addTransactionProvider`, `updateTransactionProvider`, `deleteTransactionProvider`, `balanceProvider`, `filteredTransactionsProvider`, `currentMonthExpensesByCategoryProvider` | CRUD + saldo + lista filtrada + gastos do mês |
@@ -204,8 +210,8 @@ Sempre que mudares colunas:
 | `report_service.dart` | `MonthlyReport` (objectivos concluídos no mês + activos), gera os meses em falta no arranque, retenção de 1 ano |
 | `report_pdf.dart` | Exporta um `MonthlyReport` para PDF (via `printing`) |
 | `reminder_service.dart` | `checkAndNotify(ref)` — verificação **ao abrir a app**: respeita `notificationsEnabled`; notifica tarefas a vencer hoje/amanhã e objectivos <50% com data-alvo em ≤7 dias. Complementa (não substitui) os lembretes agendados |
-| `task_reminder_service.dart` | Tarefas normais: aviso na **véspera (18h)** e no **dia (9h)** (ids `500000 + taskId*10`). Tarefas-hábito: uma notificação por dia à hora escolhida, janela rolante de 90 dias (ids `700000 + taskId*100`). `rescheduleForTask` / `rescheduleAll` / `cancelForTask` |
-| `habit_service.dart` | Tarefas-hábito: `alternarHoje` (marca/desmarca o check-in de hoje), `percent`/`totalDias`/`diasFeitos`, `sweepClose` (fecha sozinho os hábitos cujo período terminou) |
+| `task_reminder_service.dart` | Tarefas normais: aviso na **véspera (18h)** e no **dia (9h)** (ids `500000 + taskId*10`). Tarefas-hábito: **um ou mais** lembretes por dia (`HabitReminders`), janela rolante de 90 dias (ids `700000 + taskId*1000`). `rescheduleForTask(ref, task)` / `rescheduleAll` / `cancelForTask` |
+| `habit_service.dart` | Tarefas-hábito: `alternarHoje` (marca/desmarca o check-in de hoje), `percent`/`totalDias`/`diasFeitos`, `getReminders`/`setReminders` (lista de horários), `limparCheckins`, `sweepClose` (fecha sozinho os hábitos cujo período terminou) |
 | `sms_service.dart` | Pede permissão SMS, escuta mensagens recebidas, passa por `SmsParser` e grava a transação (`await ... .future`) |
 | `sms_parser.dart` | Regras regex para **M-Pesa** e **BIM**: extrai `amount`, `type` (receita/despesa), `reference` |
 | `transaction_ingest_service.dart` | Ponto único: analisa um texto (SMS ou push), **evita duplicados** pela referência (`smsId`) e grava a transação |

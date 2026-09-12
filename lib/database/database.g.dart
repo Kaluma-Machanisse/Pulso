@@ -3021,6 +3021,296 @@ class HabitCheckinsCompanion extends UpdateCompanion<HabitCheckin> {
   }
 }
 
+class $HabitRemindersTable extends HabitReminders
+    with TableInfo<$HabitRemindersTable, HabitReminder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HabitRemindersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _hourMeta = const VerificationMeta('hour');
+  @override
+  late final GeneratedColumn<int> hour = GeneratedColumn<int>(
+    'hour',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _minuteMeta = const VerificationMeta('minute');
+  @override
+  late final GeneratedColumn<int> minute = GeneratedColumn<int>(
+    'minute',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, taskId, hour, minute];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'habit_reminders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HabitReminder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('hour')) {
+      context.handle(
+        _hourMeta,
+        hour.isAcceptableOrUnknown(data['hour']!, _hourMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hourMeta);
+    }
+    if (data.containsKey('minute')) {
+      context.handle(
+        _minuteMeta,
+        minute.isAcceptableOrUnknown(data['minute']!, _minuteMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_minuteMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HabitReminder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HabitReminder(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      hour: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}hour'],
+      )!,
+      minute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}minute'],
+      )!,
+    );
+  }
+
+  @override
+  $HabitRemindersTable createAlias(String alias) {
+    return $HabitRemindersTable(attachedDatabase, alias);
+  }
+}
+
+class HabitReminder extends DataClass implements Insertable<HabitReminder> {
+  final int id;
+  final int taskId;
+  final int hour;
+  final int minute;
+  const HabitReminder({
+    required this.id,
+    required this.taskId,
+    required this.hour,
+    required this.minute,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['task_id'] = Variable<int>(taskId);
+    map['hour'] = Variable<int>(hour);
+    map['minute'] = Variable<int>(minute);
+    return map;
+  }
+
+  HabitRemindersCompanion toCompanion(bool nullToAbsent) {
+    return HabitRemindersCompanion(
+      id: Value(id),
+      taskId: Value(taskId),
+      hour: Value(hour),
+      minute: Value(minute),
+    );
+  }
+
+  factory HabitReminder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HabitReminder(
+      id: serializer.fromJson<int>(json['id']),
+      taskId: serializer.fromJson<int>(json['taskId']),
+      hour: serializer.fromJson<int>(json['hour']),
+      minute: serializer.fromJson<int>(json['minute']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'taskId': serializer.toJson<int>(taskId),
+      'hour': serializer.toJson<int>(hour),
+      'minute': serializer.toJson<int>(minute),
+    };
+  }
+
+  HabitReminder copyWith({int? id, int? taskId, int? hour, int? minute}) =>
+      HabitReminder(
+        id: id ?? this.id,
+        taskId: taskId ?? this.taskId,
+        hour: hour ?? this.hour,
+        minute: minute ?? this.minute,
+      );
+  HabitReminder copyWithCompanion(HabitRemindersCompanion data) {
+    return HabitReminder(
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      hour: data.hour.present ? data.hour.value : this.hour,
+      minute: data.minute.present ? data.minute.value : this.minute,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitReminder(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('hour: $hour, ')
+          ..write('minute: $minute')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, taskId, hour, minute);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HabitReminder &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.hour == this.hour &&
+          other.minute == this.minute);
+}
+
+class HabitRemindersCompanion extends UpdateCompanion<HabitReminder> {
+  final Value<int> id;
+  final Value<int> taskId;
+  final Value<int> hour;
+  final Value<int> minute;
+  const HabitRemindersCompanion({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.hour = const Value.absent(),
+    this.minute = const Value.absent(),
+  });
+  HabitRemindersCompanion.insert({
+    this.id = const Value.absent(),
+    required int taskId,
+    required int hour,
+    required int minute,
+  }) : taskId = Value(taskId),
+       hour = Value(hour),
+       minute = Value(minute);
+  static Insertable<HabitReminder> custom({
+    Expression<int>? id,
+    Expression<int>? taskId,
+    Expression<int>? hour,
+    Expression<int>? minute,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (hour != null) 'hour': hour,
+      if (minute != null) 'minute': minute,
+    });
+  }
+
+  HabitRemindersCompanion copyWith({
+    Value<int>? id,
+    Value<int>? taskId,
+    Value<int>? hour,
+    Value<int>? minute,
+  }) {
+    return HabitRemindersCompanion(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      hour: hour ?? this.hour,
+      minute: minute ?? this.minute,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (hour.present) {
+      map['hour'] = Variable<int>(hour.value);
+    }
+    if (minute.present) {
+      map['minute'] = Variable<int>(minute.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitRemindersCompanion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('hour: $hour, ')
+          ..write('minute: $minute')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3030,6 +3320,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ReportsTable reports = $ReportsTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $HabitCheckinsTable habitCheckins = $HabitCheckinsTable(this);
+  late final $HabitRemindersTable habitReminders = $HabitRemindersTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3041,6 +3332,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     reports,
     budgets,
     habitCheckins,
+    habitReminders,
   ];
 }
 
@@ -4556,6 +4848,183 @@ typedef $$HabitCheckinsTableProcessedTableManager =
       HabitCheckin,
       PrefetchHooks Function()
     >;
+typedef $$HabitRemindersTableCreateCompanionBuilder =
+    HabitRemindersCompanion Function({
+      Value<int> id,
+      required int taskId,
+      required int hour,
+      required int minute,
+    });
+typedef $$HabitRemindersTableUpdateCompanionBuilder =
+    HabitRemindersCompanion Function({
+      Value<int> id,
+      Value<int> taskId,
+      Value<int> hour,
+      Value<int> minute,
+    });
+
+class $$HabitRemindersTableFilterComposer
+    extends Composer<_$AppDatabase, $HabitRemindersTable> {
+  $$HabitRemindersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get hour => $composableBuilder(
+    column: $table.hour,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minute => $composableBuilder(
+    column: $table.minute,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HabitRemindersTableOrderingComposer
+    extends Composer<_$AppDatabase, $HabitRemindersTable> {
+  $$HabitRemindersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get hour => $composableBuilder(
+    column: $table.hour,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minute => $composableBuilder(
+    column: $table.minute,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HabitRemindersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HabitRemindersTable> {
+  $$HabitRemindersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<int> get hour =>
+      $composableBuilder(column: $table.hour, builder: (column) => column);
+
+  GeneratedColumn<int> get minute =>
+      $composableBuilder(column: $table.minute, builder: (column) => column);
+}
+
+class $$HabitRemindersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HabitRemindersTable,
+          HabitReminder,
+          $$HabitRemindersTableFilterComposer,
+          $$HabitRemindersTableOrderingComposer,
+          $$HabitRemindersTableAnnotationComposer,
+          $$HabitRemindersTableCreateCompanionBuilder,
+          $$HabitRemindersTableUpdateCompanionBuilder,
+          (
+            HabitReminder,
+            BaseReferences<_$AppDatabase, $HabitRemindersTable, HabitReminder>,
+          ),
+          HabitReminder,
+          PrefetchHooks Function()
+        > {
+  $$HabitRemindersTableTableManager(
+    _$AppDatabase db,
+    $HabitRemindersTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HabitRemindersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HabitRemindersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HabitRemindersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> taskId = const Value.absent(),
+                Value<int> hour = const Value.absent(),
+                Value<int> minute = const Value.absent(),
+              }) => HabitRemindersCompanion(
+                id: id,
+                taskId: taskId,
+                hour: hour,
+                minute: minute,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int taskId,
+                required int hour,
+                required int minute,
+              }) => HabitRemindersCompanion.insert(
+                id: id,
+                taskId: taskId,
+                hour: hour,
+                minute: minute,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HabitRemindersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HabitRemindersTable,
+      HabitReminder,
+      $$HabitRemindersTableFilterComposer,
+      $$HabitRemindersTableOrderingComposer,
+      $$HabitRemindersTableAnnotationComposer,
+      $$HabitRemindersTableCreateCompanionBuilder,
+      $$HabitRemindersTableUpdateCompanionBuilder,
+      (
+        HabitReminder,
+        BaseReferences<_$AppDatabase, $HabitRemindersTable, HabitReminder>,
+      ),
+      HabitReminder,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4572,4 +5041,6 @@ class $AppDatabaseManager {
       $$BudgetsTableTableManager(_db, _db.budgets);
   $$HabitCheckinsTableTableManager get habitCheckins =>
       $$HabitCheckinsTableTableManager(_db, _db.habitCheckins);
+  $$HabitRemindersTableTableManager get habitReminders =>
+      $$HabitRemindersTableTableManager(_db, _db.habitReminders);
 }

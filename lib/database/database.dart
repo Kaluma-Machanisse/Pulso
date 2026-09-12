@@ -78,6 +78,16 @@ class HabitCheckins extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+// Vários lembretes diários por tarefa-hábito (v6). Substitui
+// Tasks.reminderHour/reminderMinute (que ficam só como o primeiro valor
+// histórico, não são mais lidos para agendar).
+class HabitReminders extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get taskId => integer().references(Tasks, #id)();
+  IntColumn get hour => integer()();
+  IntColumn get minute => integer()();
+}
+
 // Tabela de Transações Financeiras
 class Transactions extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -92,13 +102,20 @@ class Transactions extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(
-    tables: [Goals, Tasks, Transactions, Reports, Budgets, HabitCheckins])
+@DriftDatabase(tables: [
+  Goals,
+  Tasks,
+  Transactions,
+  Reports,
+  Budgets,
+  HabitCheckins,
+  HabitReminders,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -130,6 +147,10 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(tasks, tasks.reminderMinute);
             await m.addColumn(tasks, tasks.habitClosed);
             await m.createTable(habitCheckins);
+          }
+          // v5 -> v6: vários lembretes diários por tarefa-hábito.
+          if (from < 6) {
+            await m.createTable(habitReminders);
           }
         },
         // NOTA: `PRAGMA foreign_keys = ON` NÃO é activado de propósito.
