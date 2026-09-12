@@ -536,6 +536,19 @@ junto ao título "Receitas vs despesas" alterna entre:
 
 ---
 
+# Tarefas: atalho para mostrar concluídas — Setembro 2026
+
+`tasks_screen.dart`: ícone novo no AppBar, ao lado do filtro — alterna
+directamente `taskFilterProvider.showCompleted` sem precisar de abrir o
+painel de filtros primeiro.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK.
+
+---
+
 # Ordem dos separadores — Setembro 2026
 
 `home_screen.dart`: **Tarefas** passa a ser o primeiro separador (antes de

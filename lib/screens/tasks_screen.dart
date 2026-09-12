@@ -137,6 +137,18 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 title: const Text('Tarefas'),
                 actions: [
                   IconButton(
+                    tooltip: filter.showCompleted
+                        ? 'Esconder concluídas'
+                        : 'Mostrar concluídas',
+                    icon: Icon(filter.showCompleted
+                        ? Icons.check_circle
+                        : Icons.check_circle_outline),
+                    onPressed: () => ref
+                        .read(taskFilterProvider.notifier)
+                        .toggleCompleted(!filter.showCompleted),
+                  ),
+                  IconButton(
+                    tooltip: 'Filtros',
                     icon: Icon(filter.active
                         ? Icons.filter_alt
                         : Icons.filter_alt_outlined),
