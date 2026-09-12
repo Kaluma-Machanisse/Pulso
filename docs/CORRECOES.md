@@ -536,6 +536,26 @@ junto ao título "Receitas vs despesas" alterna entre:
 
 ---
 
+# Estatísticas: gráfico também para os objectivos — Setembro 2026
+
+A secção "Progresso dos objectivos" ganha o mesmo alternador barras/circular
+da secção financeira, além da lista detalhada que já existia (mantida por
+baixo do gráfico):
+
+- **Barras** (`_GoalsBars`) — até 8 objectivos activos, uma barra por
+  objectivo com a % de progresso; cor pelo prazo (a mesma paleta do ponto de
+  prazo em Objectivos: laranja=Curto, amarelo=Médio, verde=Longo), verde de
+  sucesso a partir de 100%.
+- **Circular** (`_GoalsCircular`) — donut com a contagem de objectivos por
+  **prazo** (Curto/Médio/Longo), mesma paleta de cores, com legenda ao lado.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter build linux --debug` OK.
+
+---
+
 # Tarefas: atalho para mostrar concluídas — Setembro 2026
 
 `tasks_screen.dart`: ícone novo no AppBar, ao lado do filtro — alterna

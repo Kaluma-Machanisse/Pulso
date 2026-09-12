@@ -168,7 +168,7 @@ Sempre que mudares colunas:
 | `finance_screen.dart` | ConsumerStateful | Banner de **saldo** arredondado + **banner** de orçamentos ultrapassados + secção **"Gastos deste mês"** (barras por categoria) + lista filtrável (tipo, categoria, mês, ano) com ícone circular colorido por transação. Toque numa transação = editar; swipe = eliminar. Menu → Orçamentos / Relatórios. Botão de push para Supabase com feedback |
 | `add_transaction_screen.dart` | ConsumerStateful | Formulário **criar E editar** transação (recebe `tx?`) |
 | `budgets_screen.dart` | ConsumerWidget | Orçamentos mensais por categoria: definir/editar/eliminar limite, barra de progresso do gasto do mês, marca de ultrapassado |
-| `stats_screen.dart` | ConsumerStateful | Cartões de resumo (Saldo, Receitas/Despesas do mês) + gráfico **barras/circular** (`SegmentedButton`), num `Card` com legenda + progresso dos objectivos + botão de pull do Supabase |
+| `stats_screen.dart` | ConsumerStateful | Cartões de resumo (Saldo, Receitas/Despesas do mês) + gráfico **barras/circular** (`SegmentedButton`), num `Card` com legenda + progresso dos objectivos com o mesmo alternador barras/circular (por prazo) + botão de pull do Supabase |
 | `settings_screen.dart` | ConsumerWidget | Agrupado em secções com `Card` (Conta, Aparência, Dados, Notificações); tema, moeda, backup/restauro JSON (com confirmação), interruptor de notificações, **acesso a notificações bancárias** (Android) |
 
 ---

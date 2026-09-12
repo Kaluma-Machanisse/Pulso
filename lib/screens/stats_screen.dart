@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../database/database.dart';
 import '../providers/stats_providers.dart';
 import '../providers/transaction_providers.dart';
 import '../providers/settings_providers.dart';
@@ -18,6 +19,7 @@ class StatsScreen extends ConsumerStatefulWidget {
 
 class _StatsScreenState extends ConsumerState<StatsScreen> {
   _TipoGrafico _tipo = _TipoGrafico.barras;
+  _TipoGrafico _tipoObjectivos = _TipoGrafico.barras;
 
   @override
   Widget build(BuildContext context) {
@@ -237,8 +239,34 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             const SizedBox(height: 28),
 
             // ---- Progresso dos objectivos ----
-            Text('Progresso dos objectivos',
-                style: Theme.of(context).textTheme.titleMedium),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Objectivos',
+                      style: Theme.of(context).textTheme.titleMedium),
+                ),
+                SegmentedButton<_TipoGrafico>(
+                  showSelectedIcon: false,
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  segments: const [
+                    ButtonSegment(
+                      value: _TipoGrafico.barras,
+                      icon: Icon(Icons.bar_chart, size: 18),
+                    ),
+                    ButtonSegment(
+                      value: _TipoGrafico.circular,
+                      icon: Icon(Icons.pie_chart, size: 18),
+                    ),
+                  ],
+                  selected: {_tipoObjectivos},
+                  onSelectionChanged: (s) =>
+                      setState(() => _tipoObjectivos = s.first),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             goalsProgressAsync.when(
               data: (goals) {
@@ -248,7 +276,20 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                   return Text('Nenhum objectivo activo.',
                       style: TextStyle(color: scheme.onSurfaceVariant));
                 }
-                return Card(
+                return Column(children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
+                    child: SizedBox(
+                      height: 220,
+                      child: _tipoObjectivos == _TipoGrafico.circular
+                          ? _GoalsCircular(goals: activos)
+                          : _GoalsBars(goals: activos, scheme: scheme),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -291,7 +332,8 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                       ],
                     ),
                   ),
-                );
+                ),
+                ]);
               },
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
@@ -425,6 +467,163 @@ class _GraficoCircular extends StatelessWidget {
                     fontSize: 15, fontWeight: FontWeight.bold)),
             Text('movimentado (total)',
                 style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// Cores do ponto de prazo (mesmas do ecrã de Objectivos): Curto = mais
+// urgente/laranja, Médio = amarelo, Longo = verde/tranquilo.
+const _corCurto = Color(0xFFF57C00);
+const _corMedio = Color(0xFFFBC02D);
+const _corLongo = Color(0xFF388E3C);
+
+Color _corPorPrazo(String term) {
+  switch (term) {
+    case 'Curto prazo':
+      return _corCurto;
+    case 'Médio prazo':
+      return _corMedio;
+    default:
+      return _corLongo;
+  }
+}
+
+class _GoalsBars extends StatelessWidget {
+  final List<Goal> goals;
+  final ColorScheme scheme;
+  const _GoalsBars({required this.goals, required this.scheme});
+
+  @override
+  Widget build(BuildContext context) {
+    final mostrados = goals.take(8).toList();
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: 110,
+        gridData: FlGridData(
+          drawVerticalLine: false,
+          horizontalInterval: 25,
+          getDrawingHorizontalLine: (_) =>
+              FlLine(color: scheme.outlineVariant, strokeWidth: 1),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(mostrados.length, (i) {
+          final g = mostrados[i];
+          return BarChartGroupData(x: i, barRods: [
+            BarChartRodData(
+              toY: g.progressPercentage.toDouble(),
+              width: 18,
+              borderRadius: BorderRadius.circular(4),
+              color: g.progressPercentage >= 100
+                  ? SemanticColors.receita
+                  : _corPorPrazo(g.term),
+            ),
+          ]);
+        }),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 34,
+              interval: 25,
+              getTitlesWidget: (value, meta) => Text('${value.toInt()}%',
+                  style:
+                      TextStyle(fontSize: 10, color: scheme.onSurfaceVariant)),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 32,
+              getTitlesWidget: (value, meta) {
+                final idx = value.toInt();
+                if (idx < 0 || idx >= mostrados.length) return const Text('');
+                final titulo = mostrados[idx].title;
+                final curto =
+                    titulo.length > 8 ? '${titulo.substring(0, 7)}…' : titulo;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(curto,
+                      style: TextStyle(
+                          fontSize: 9, color: scheme.onSurfaceVariant)),
+                );
+              },
+            ),
+          ),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+      ),
+    );
+  }
+}
+
+class _GoalsCircular extends StatelessWidget {
+  final List<Goal> goals;
+  const _GoalsCircular({required this.goals});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final porPrazo = <String, int>{};
+    for (final g in goals) {
+      porPrazo[g.term] = (porPrazo[g.term] ?? 0) + 1;
+    }
+    const ordem = ['Curto prazo', 'Médio prazo', 'Longo prazo'];
+
+    return Row(
+      children: [
+        Expanded(
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 3,
+              centerSpaceRadius: 46,
+              sections: [
+                for (final term in ordem)
+                  if (porPrazo[term] != null)
+                    PieChartSectionData(
+                      value: porPrazo[term]!.toDouble(),
+                      color: _corPorPrazo(term),
+                      radius: 40,
+                      title: '${porPrazo[term]}',
+                      titleStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final term in ordem)
+              if (porPrazo[term] != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                            color: _corPorPrazo(term), shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 6),
+                      Text('$term (${porPrazo[term]})',
+                          style: TextStyle(
+                              fontSize: 11, color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
           ],
         ),
       ],
