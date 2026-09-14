@@ -30,7 +30,7 @@ class ArchivedGoalsScreen extends ConsumerWidget {
             itemBuilder: (_, i) {
               final goal = goals[i];
               return ListTile(
-                leading: const Icon(Icons.inventory_2_outlined),
+                leading: const Icon(Icons.inventory_2_rounded),
                 title: Text(goal.title),
                 subtitle: Text(
                     '${goal.category} · concluído em ${_data(goal.archivedAt)}'),

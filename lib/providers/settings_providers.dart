@@ -6,22 +6,26 @@ class AppSettings {
   final ThemeMode themeMode;
   final String currency;
   final bool notificationsEnabled;
+  final double monthlyLimit; // 0 = sem limite geral definido
 
   const AppSettings({
     this.themeMode = ThemeMode.system,
     this.currency = 'MZN',
     this.notificationsEnabled = true,
+    this.monthlyLimit = 0,
   });
 
   AppSettings copyWith({
     ThemeMode? themeMode,
     String? currency,
     bool? notificationsEnabled,
+    double? monthlyLimit,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
       currency: currency ?? this.currency,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      monthlyLimit: monthlyLimit ?? this.monthlyLimit,
     );
   }
 }
@@ -36,11 +40,13 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final themeModeIndex = prefs.getInt('themeMode') ?? 0;
     final currency = prefs.getString('currency') ?? 'MZN';
     final notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
+    final monthlyLimit = prefs.getDouble('monthlyLimit') ?? 0;
 
     state = AppSettings(
       themeMode: ThemeMode.values[themeModeIndex],
       currency: currency,
       notificationsEnabled: notificationsEnabled,
+      monthlyLimit: monthlyLimit,
     );
   }
 
@@ -60,6 +66,12 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notificationsEnabled', value);
     state = state.copyWith(notificationsEnabled: value);
+  }
+
+  Future<void> setMonthlyLimit(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('monthlyLimit', value);
+    state = state.copyWith(monthlyLimit: value);
   }
 }
 

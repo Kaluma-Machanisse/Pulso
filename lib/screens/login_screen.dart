@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       autofillHints: const [AutofillHints.email],
                       decoration: const InputDecoration(
                         labelText: 'Email',
-                        prefixIcon: Icon(Icons.mail_outline),
+                        prefixIcon: Icon(Icons.mail_outline_rounded),
                       ),
                       validator: (v) => (v == null || !v.contains('@'))
                           ? 'Email inválido'
@@ -146,11 +146,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       autofillHints: const [AutofillHints.password],
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
                         suffixIcon: IconButton(
                           icon: Icon(_verPassword
-                              ? Icons.visibility_off
-                              : Icons.visibility),
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded),
                           onPressed: () =>
                               setState(() => _verPassword = !_verPassword),
                         ),

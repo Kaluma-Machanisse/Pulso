@@ -35,7 +35,7 @@ class ReportDetailScreen extends ConsumerWidget {
             : 'Objectivos · ${_titulo(obj!.month)}'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
+            icon: const Icon(Icons.picture_as_pdf_rounded),
             tooltip: 'Exportar PDF',
             onPressed: () => fin != null
                 ? ReportPdf.openFinancial(fin, moeda)
@@ -75,7 +75,7 @@ class _Objectivos extends StatelessWidget {
           ...r.completed.map((g) => ListTile(
                 dense: true,
                 leading:
-                    const Icon(Icons.check_circle, color: SemanticColors.receita),
+                    const Icon(Icons.check_circle_rounded, color: SemanticColors.receita),
                 title: Text(g.title),
                 subtitle:
                     Text('${g.category} · ${g.importance} · ${g.term}'),
@@ -135,7 +135,7 @@ class _Financeiro extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  const Icon(Icons.trending_up,
+                  const Icon(Icons.trending_up_rounded,
                       color: SemanticColors.despesa),
                   const SizedBox(width: 10),
                   Expanded(

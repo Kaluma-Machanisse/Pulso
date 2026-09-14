@@ -142,7 +142,7 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.link_off, size: 18, color: scheme.onSurfaceVariant),
+                Icon(Icons.link_off_rounded, size: 18, color: scheme.onSurfaceVariant),
                 const SizedBox(width: 8),
                 Text('Progresso: $pct%',
                     style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -173,7 +173,7 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.link, size: 18),
+              const Icon(Icons.link_rounded, size: 18),
               const SizedBox(width: 8),
               Text('Progresso automático: $pct%',
                   style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -242,7 +242,7 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
             const SizedBox(height: 16),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_today),
+              leading: const Icon(Icons.calendar_today_rounded),
               title: Text(
                 'Data alvo: ${_targetDate.day}/${_targetDate.month}/${_targetDate.year}',
               ),
@@ -262,7 +262,7 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: _save,
-              icon: const Icon(Icons.save),
+              icon: const Icon(Icons.save_rounded),
               label: Text(widget.goal == null ? 'Criar' : 'Guardar'),
             ),
           ],

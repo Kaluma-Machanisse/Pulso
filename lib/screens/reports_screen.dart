@@ -73,7 +73,7 @@ class ReportsScreen extends ConsumerWidget {
               }
 
               return ListTile(
-                leading: Icon(fin ? Icons.account_balance_wallet : Icons.flag),
+                leading: Icon(fin ? Icons.account_balance_wallet_rounded : Icons.flag_rounded),
                 title: Text('${fin ? 'Finanças' : 'Objectivos'} · '
                     '${tituloMes(row.month)}'),
                 subtitle: Text(subtitle),
@@ -81,11 +81,11 @@ class ReportsScreen extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.picture_as_pdf),
+                      icon: const Icon(Icons.picture_as_pdf_rounded),
                       tooltip: 'Exportar PDF',
                       onPressed: exportar,
                     ),
-                    const Icon(Icons.chevron_right),
+                    const Icon(Icons.chevron_right_rounded),
                   ],
                 ),
                 onTap: abrirDetalhe,

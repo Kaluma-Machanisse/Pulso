@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../database/database.dart';
 import '../providers/stats_providers.dart';
-import '../providers/transaction_providers.dart';
 import '../providers/settings_providers.dart';
+import '../providers/transaction_providers.dart';
 import '../services/sync_service.dart';
+import '../theme/category_style.dart';
+import '../theme/pulso_theme.dart';
 import '../theme/semantic_colors.dart';
 import 'reports_screen.dart';
 
@@ -27,7 +29,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     final monthlyStatsAsync = ref.watch(monthlyStatsProvider);
     final weeklySpendAsync = ref.watch(weeklySpendProvider);
     final goalsProgressAsync = ref.watch(goalsProgressProvider);
-    final balanceAsync = ref.watch(balanceProvider);
     final moeda = ref.watch(settingsProvider).currency;
     final scheme = Theme.of(context).colorScheme;
 
@@ -36,13 +37,13 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         title: const Text('Estatísticas'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.description_outlined),
+            icon: const Icon(Icons.description_rounded),
             tooltip: 'Relatórios mensais',
             onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ReportsScreen())),
           ),
           IconButton(
-            icon: const Icon(Icons.cloud_download),
+            icon: const Icon(Icons.cloud_download_rounded),
             tooltip: 'Restaurar dados do Supabase',
             onPressed: () async {
               final ok = await SyncService.pullAll(ref);
@@ -52,7 +53,8 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                     content: Text(ok
                         ? 'Dados restaurados'
                         : 'Falha ao restaurar. Verifica a ligação.'),
-                    backgroundColor: ok ? null : Colors.red,
+                    backgroundColor:
+                        ok ? null : Theme.of(context).colorScheme.error,
                   ),
                 );
               }
@@ -68,32 +70,38 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             // ---- Resumo ----
             monthlyStatsAsync.when(
               data: (monthly) {
-                final chave = monthly.keys.isEmpty
-                    ? null
-                    : (monthly.keys.toList()..sort()).last;
+                final chaves = monthly.keys.toList()..sort();
+                final chave = chaves.isEmpty ? null : chaves.last;
+                final chaveAnterior =
+                    chaves.length >= 2 ? chaves[chaves.length - 2] : null;
                 final mesActual = chave != null ? monthly[chave]! : null;
+                final mesAnterior =
+                    chaveAnterior != null ? monthly[chaveAnterior]! : null;
+
+                double? variacao(String campo) {
+                  final atual = mesActual?[campo] ?? 0;
+                  final anterior = mesAnterior?[campo] ?? 0;
+                  if (mesAnterior == null || anterior == 0) return null;
+                  return ((atual - anterior) / anterior) * 100;
+                }
+
                 return Row(
                   children: [
-                    _StatCard(
-                      label: 'Saldo',
-                      value: balanceAsync.when(
-                        data: (b) => '${b.toStringAsFixed(0)} $moeda',
-                        loading: () => '—',
-                        error: (_, __) => '—',
-                      ),
-                      color: scheme.primary,
-                    ),
                     _StatCard(
                       label: 'Receitas (mês)',
                       value:
                           '${(mesActual?['receitas'] ?? 0).toStringAsFixed(0)} $moeda',
                       color: SemanticColors.receita,
+                      trendPct: variacao('receitas'),
+                      upIsGood: true,
                     ),
                     _StatCard(
                       label: 'Despesas (mês)',
                       value:
                           '${(mesActual?['despesas'] ?? 0).toStringAsFixed(0)} $moeda',
                       color: SemanticColors.despesa,
+                      trendPct: variacao('despesas'),
+                      upIsGood: false,
                     ),
                   ],
                 );
@@ -120,11 +128,11 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                   segments: const [
                     ButtonSegment(
                       value: _TipoGrafico.barras,
-                      icon: Icon(Icons.bar_chart, size: 18),
+                      icon: Icon(Icons.bar_chart_rounded, size: 18),
                     ),
                     ButtonSegment(
                       value: _TipoGrafico.circular,
-                      icon: Icon(Icons.pie_chart, size: 18),
+                      icon: Icon(Icons.pie_chart_rounded, size: 18),
                     ),
                   ],
                   selected: {_tipo},
@@ -362,7 +370,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.trending_up,
+                            const Icon(Icons.trending_up_rounded,
                                 size: 16, color: SemanticColors.despesa),
                             const SizedBox(width: 6),
                             Text(
@@ -384,6 +392,12 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             ),
             const SizedBox(height: 28),
 
+            // ---- Insights ----
+            Text('Insights', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            _InsightsRow(moeda: moeda),
+            const SizedBox(height: 28),
+
             // ---- Progresso dos objectivos ----
             Row(
               children: [
@@ -400,11 +414,11 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                   segments: const [
                     ButtonSegment(
                       value: _TipoGrafico.barras,
-                      icon: Icon(Icons.bar_chart, size: 18),
+                      icon: Icon(Icons.bar_chart_rounded, size: 18),
                     ),
                     ButtonSegment(
                       value: _TipoGrafico.circular,
-                      icon: Icon(Icons.pie_chart, size: 18),
+                      icon: Icon(Icons.pie_chart_rounded, size: 18),
                     ),
                   ],
                   selected: {_tipoObjectivos},
@@ -497,7 +511,15 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  const _StatCard({required this.label, required this.value, required this.color});
+  final double? trendPct; // % vs período anterior; null = sem dado
+  final bool upIsGood;
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.trendPct,
+    this.upIsGood = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -518,9 +540,195 @@ class _StatCard extends StatelessWidget {
                 style: TextStyle(
                     fontWeight: FontWeight.bold, fontSize: 15, color: color)),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 11)),
+            Row(
+              children: [
+                Text(label, style: const TextStyle(fontSize: 11)),
+                if (trendPct != null) ...[
+                  const SizedBox(width: 4),
+                  _TrendBadge(pct: trendPct!, upIsGood: upIsGood),
+                ],
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Badge de tendência ("↓8%" / "↑12%") vs período anterior.
+class _TrendBadge extends StatelessWidget {
+  final double pct;
+  final bool upIsGood;
+  const _TrendBadge({required this.pct, required this.upIsGood});
+
+  @override
+  Widget build(BuildContext context) {
+    final subiu = pct >= 0;
+    final bom = subiu == upIsGood;
+    final cor = pct == 0
+        ? Theme.of(context).colorScheme.onSurfaceVariant
+        : (bom ? SemanticColors.receita : SemanticColors.despesa);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            subiu ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+            size: 9,
+            color: cor,
+          ),
+          Text('${pct.abs().toStringAsFixed(0)}%',
+              style: TextStyle(
+                  fontSize: 9.5, fontWeight: FontWeight.w800, color: cor)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Linha de 3 mini-cartões de inteligência contextual: gasto médio diário,
+/// categoria principal e o dia de maior gasto do mês.
+class _InsightsRow extends ConsumerWidget {
+  final String moeda;
+  const _InsightsRow({required this.moeda});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gastosCategoria = ref.watch(currentMonthExpensesByCategoryProvider);
+    final semanas = ref.watch(weeklySpendProvider).valueOrNull ?? const [];
+
+    final totalMes = gastosCategoria.fold<double>(0, (s, e) => s + e.value);
+    final diasDecorridos = DateTime.now().day;
+    final mediaDiaria = diasDecorridos > 0 ? totalMes / diasDecorridos : 0;
+
+    final topCategoria = gastosCategoria.isNotEmpty ? gastosCategoria.first : null;
+
+    WeekSpend? picoSemana;
+    for (final s in semanas) {
+      if (picoSemana == null || s.total > picoSemana.total) picoSemana = s;
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: _InsightCard(
+            icon: Icons.calendar_view_day_rounded,
+            label: 'Média diária',
+            value: '${mediaDiaria.toStringAsFixed(0)} $moeda',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _InsightCard(
+            icon: topCategoria != null
+                ? CategoryStyle.icon(topCategoria.key)
+                : Icons.category_rounded,
+            iconColor:
+                topCategoria != null ? CategoryStyle.color(topCategoria.key) : null,
+            label: topCategoria?.key ?? 'Sem gastos',
+            value: topCategoria != null
+                ? '${topCategoria.value.toStringAsFixed(0)} $moeda'
+                : '—',
+            donutPct: topCategoria != null && totalMes > 0
+                ? topCategoria.value / totalMes
+                : null,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _InsightCard(
+            icon: Icons.local_fire_department_rounded,
+            iconColor: const Color(0xFFE8A13C),
+            label: picoSemana != null ? 'Pico · semana ${picoSemana.semana}' : 'Pico',
+            value: picoSemana != null
+                ? '${picoSemana.total.toStringAsFixed(0)} $moeda'
+                : '—',
+            destaque: picoSemana != null,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InsightCard extends StatelessWidget {
+  final IconData icon;
+  final Color? iconColor;
+  final String label;
+  final String value;
+  final double? donutPct; // 0-1, se definido desenha um donut em vez do ícone
+  final bool destaque; // mostra uma estrela no canto
+
+  const _InsightCard({
+    required this.icon,
+    this.iconColor,
+    required this.label,
+    required this.value,
+    this.donutPct,
+    this.destaque = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = PulsoPalette.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: p.surfaceElevated,
+        borderRadius: BorderRadius.circular(PulsoRadius.md),
+      ),
+      child: Stack(
+        children: [
+          if (destaque)
+            const Positioned(
+              top: 0,
+              right: 0,
+              child: Icon(Icons.star_rounded, size: 15, color: Color(0xFFE8A13C)),
+            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (donutPct != null)
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        value: donutPct!.clamp(0, 1),
+                        strokeWidth: 3,
+                        backgroundColor: p.border,
+                        valueColor:
+                            AlwaysStoppedAnimation(iconColor ?? p.primary),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Icon(icon, size: 18, color: iconColor ?? p.textSecondary),
+              const SizedBox(height: 8),
+              Text(value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 2),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall),
+            ],
+          ),
+        ],
       ),
     );
   }

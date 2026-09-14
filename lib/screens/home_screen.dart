@@ -18,6 +18,9 @@ import 'tasks_screen.dart';
 import 'finance_screen.dart';
 import 'stats_screen.dart';
 import 'settings_screen.dart';  // <-- adicionado
+import 'add_task_screen.dart';
+import 'add_goal_screen.dart';
+import 'add_transaction_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -95,33 +98,86 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  Future<void> _adicionarRapido() async {
+    final scheme = Theme.of(context).colorScheme;
+    await showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.checklist_rounded, color: scheme.primary),
+              title: const Text('Nova tarefa'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AddTaskScreen()));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.flag_rounded, color: scheme.primary),
+              title: const Text('Novo objectivo'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AddGoalScreen()));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.account_balance_wallet_rounded,
+                  color: scheme.primary),
+              title: const Text('Nova transação'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const AddTransactionScreen()));
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,  // importante para 5 itens
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.checklist),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _adicionarRapido,
+        backgroundColor: scheme.primary,
+        foregroundColor: Colors.white,
+        shape: const CircleBorder(),
+        elevation: 3,
+        child: const Icon(Icons.add_rounded, size: 28),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) =>
+            setState(() => _currentIndex = index),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.checklist_rounded),
             label: 'Tarefas',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.flag),
+          NavigationDestination(
+            icon: Icon(Icons.flag_rounded),
             label: 'Objectivos',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_rounded),
             label: 'Finanças',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_rounded),
             label: 'Estatísticas',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
+          NavigationDestination(
+            icon: Icon(Icons.settings_rounded),
             label: 'Config.',
           ),
         ],

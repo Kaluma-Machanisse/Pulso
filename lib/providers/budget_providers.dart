@@ -3,6 +3,7 @@ import 'package:drift/drift.dart' show Value, OrderingTerm;
 import '../database/database.dart';
 import 'database_provider.dart';
 import 'transaction_providers.dart';
+import 'settings_providers.dart';
 
 final budgetsProvider = StreamProvider<List<Budget>>((ref) {
   final db = ref.watch(databaseProvider);
@@ -59,3 +60,21 @@ final budgetStatusProvider = Provider<List<BudgetStatus>>((ref) {
 /// Quantos orçamentos estão ultrapassados este mês.
 final overBudgetCountProvider = Provider<int>((ref) =>
     ref.watch(budgetStatusProvider).where((s) => s.over).length);
+
+/// Estado do limite geral mensal (total de despesas, não por categoria).
+class OverallBudgetStatus {
+  final double limit;
+  final double spent;
+  OverallBudgetStatus(this.limit, this.spent);
+  double get pct => limit <= 0 ? 0 : (spent / limit).clamp(0, 2).toDouble();
+  bool get over => limit > 0 && spent > limit;
+  bool get active => limit > 0;
+}
+
+final overallBudgetStatusProvider = Provider<OverallBudgetStatus>((ref) {
+  final limit = ref.watch(settingsProvider).monthlyLimit;
+  final spent = ref
+      .watch(currentMonthExpensesByCategoryProvider)
+      .fold<double>(0, (s, e) => s + e.value);
+  return OverallBudgetStatus(limit, spent);
+});

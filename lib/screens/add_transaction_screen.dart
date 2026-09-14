@@ -122,11 +122,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 ButtonSegment(
                     value: 'receita',
                     label: Text('Receita'),
-                    icon: Icon(Icons.arrow_downward)),
+                    icon: Icon(Icons.arrow_downward_rounded)),
                 ButtonSegment(
                     value: 'despesa',
                     label: Text('Despesa'),
-                    icon: Icon(Icons.arrow_upward)),
+                    icon: Icon(Icons.arrow_upward_rounded)),
               ],
               selected: {_type},
               onSelectionChanged: (val) => setState(() => _type = val.first),
@@ -175,7 +175,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             const SizedBox(height: 16),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_today),
+              leading: const Icon(Icons.calendar_today_rounded),
               title: Text('Data: ${_date.day}/${_date.month}/${_date.year}'),
               onTap: () async {
                 final picked = await showDatePicker(
@@ -190,7 +190,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: _save,
-              icon: const Icon(Icons.save),
+              icon: const Icon(Icons.save_rounded),
               label: Text(editar ? 'Guardar' : 'Criar'),
             ),
           ],

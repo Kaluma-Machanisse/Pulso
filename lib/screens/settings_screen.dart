@@ -27,7 +27,7 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               ListTile(
                 leading: Icon(
-                    user != null ? Icons.account_circle : Icons.no_accounts),
+                    user != null ? Icons.account_circle_rounded : Icons.no_accounts_rounded),
                 title: Text(
                     user != null ? (user.email ?? 'Sessão activa') : 'Sem sessão'),
                 subtitle: Text(user != null
@@ -78,7 +78,7 @@ class SettingsScreen extends ConsumerWidget {
             title: 'Aparência',
             children: [
               ListTile(
-                leading: const Icon(Icons.brightness_6),
+                leading: const Icon(Icons.brightness_6_rounded),
                 title: const Text('Tema'),
                 subtitle: Text(
                   settings.themeMode == ThemeMode.system
@@ -90,7 +90,7 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => _showThemeDialog(context, ref, settings),
               ),
               ListTile(
-                leading: const Icon(Icons.attach_money),
+                leading: const Icon(Icons.attach_money_rounded),
                 title: const Text('Moeda'),
                 subtitle: Text(settings.currency),
                 onTap: () => _showCurrencyDialog(context, ref, settings),
@@ -101,7 +101,7 @@ class SettingsScreen extends ConsumerWidget {
             title: 'Dados',
             children: [
               ListTile(
-                leading: const Icon(Icons.backup),
+                leading: const Icon(Icons.backup_rounded),
                 title: const Text('Backup local (JSON)'),
                 subtitle: const Text('Exportar dados para um ficheiro'),
                 onTap: () async {
@@ -112,12 +112,14 @@ class SettingsScreen extends ConsumerWidget {
                         ? 'Backup criado com sucesso'
                         : 'Erro ao criar o backup'),
                     backgroundColor:
-                        r == BackupResult.sucesso ? null : Colors.red,
+                        r == BackupResult.sucesso
+                            ? null
+                            : Theme.of(context).colorScheme.error,
                   ));
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.restore),
+                leading: const Icon(Icons.restore_rounded),
                 title: const Text('Restaurar backup local'),
                 subtitle: const Text('Substitui TODOS os dados actuais'),
                 onTap: () async {
@@ -152,7 +154,9 @@ class SettingsScreen extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(msg),
                     backgroundColor:
-                        r == BackupResult.sucesso ? null : Colors.red,
+                        r == BackupResult.sucesso
+                            ? null
+                            : Theme.of(context).colorScheme.error,
                   ));
                 },
               ),
@@ -162,7 +166,7 @@ class SettingsScreen extends ConsumerWidget {
             title: 'Notificações',
             children: [
               SwitchListTile(
-                secondary: const Icon(Icons.notifications),
+                secondary: const Icon(Icons.notifications_rounded),
                 title: const Text('Notificações'),
                 subtitle: const Text('Lembretes de tarefas e objectivos'),
                 value: settings.notificationsEnabled,
@@ -265,17 +269,17 @@ class _ThemeDialogState extends State<_ThemeDialog> {
         _buildOption(
           title: 'Sistema',
           value: ThemeMode.system,
-          icon: Icons.settings_suggest, // ícone para sistema
+          icon: Icons.settings_suggest_rounded, // ícone para sistema
         ),
         _buildOption(
           title: 'Claro',
           value: ThemeMode.light,
-          icon: Icons.light_mode,
+          icon: Icons.light_mode_rounded,
         ),
         _buildOption(
           title: 'Escuro',
           value: ThemeMode.dark,
-          icon: Icons.dark_mode,
+          icon: Icons.dark_mode_rounded,
         ),
         TextButton(
           onPressed: () {
@@ -301,8 +305,8 @@ class _ThemeDialogState extends State<_ThemeDialog> {
       ),
       title: Text(title),
       trailing: isSelected
-          ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
-          : const Icon(Icons.circle_outlined),
+          ? Icon(Icons.check_circle_rounded, color: Theme.of(context).colorScheme.primary)
+          : const Icon(Icons.circle_rounded),
       onTap: () => setState(() => _selected = value),
     );
   }
@@ -360,13 +364,13 @@ class _CurrencyDialogState extends State<_CurrencyDialog> {
     final isSelected = _selected == value;
     return ListTile(
       leading: Icon(
-        Icons.attach_money,
+        Icons.attach_money_rounded,
         color: isSelected ? Theme.of(context).colorScheme.primary : null,
       ),
       title: Text(title),
       trailing: isSelected
-          ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
-          : const Icon(Icons.circle_outlined),
+          ? Icon(Icons.check_circle_rounded, color: Theme.of(context).colorScheme.primary)
+          : const Icon(Icons.circle_rounded),
       onTap: () => setState(() => _selected = value),
     );
   }
@@ -410,14 +414,14 @@ class _BankNotifTileState extends ConsumerState<_BankNotifTile> {
   Widget build(BuildContext context) {
     if (!_android) {
       return const ListTile(
-        leading: Icon(Icons.notifications_active_outlined),
+        leading: Icon(Icons.notifications_active_rounded),
         title: Text('Ler notificações bancárias'),
         subtitle: Text('Disponível apenas no Android'),
         enabled: false,
       );
     }
     return ListTile(
-      leading: const Icon(Icons.notifications_active_outlined),
+      leading: const Icon(Icons.notifications_active_rounded),
       title: const Text('Ler notificações bancárias'),
       subtitle: Text(!_carregado
           ? 'A verificar…'
@@ -425,8 +429,8 @@ class _BankNotifTileState extends ConsumerState<_BankNotifTile> {
               ? 'Activo — notificações de apps de banco/carteira viram transações'
               : 'Desligado — toca para dar acesso nas Definições do Android'),
       trailing: _ativo
-          ? const Icon(Icons.check_circle, color: SemanticColors.receita)
-          : const Icon(Icons.chevron_right),
+          ? const Icon(Icons.check_circle_rounded, color: SemanticColors.receita)
+          : const Icon(Icons.chevron_right_rounded),
       onTap: _abrir,
     );
   }

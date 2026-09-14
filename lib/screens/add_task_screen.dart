@@ -292,14 +292,14 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
               const SizedBox(height: 8),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.event),
+                leading: const Icon(Icons.event_rounded),
                 title: Text(
                     'Início: ${_habitStart.day}/${_habitStart.month}/${_habitStart.year}'),
                 onTap: () => _escolherData(inicio: true),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.event_available),
+                leading: const Icon(Icons.event_available_rounded),
                 title: Text(
                     'Fim: ${_habitEnd.day}/${_habitEnd.month}/${_habitEnd.year}'
                     '  (${_habitEnd.difference(_habitStart).inDays + 1} dias)'),
@@ -308,12 +308,12 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.notifications_active_outlined, size: 20),
+                  const Icon(Icons.notifications_active_rounded, size: 20),
                   const SizedBox(width: 12),
                   const Expanded(child: Text('Lembretes diários')),
                   TextButton.icon(
                     onPressed: _adicionarLembrete,
-                    icon: const Icon(Icons.add, size: 18),
+                    icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text('Adicionar'),
                   ),
                 ],
@@ -341,7 +341,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.calendar_today),
+                leading: const Icon(Icons.calendar_today_rounded),
                 title: Text(
                   'Data de vencimento: ${_dueDate.day}/${_dueDate.month}/${_dueDate.year}',
                 ),
@@ -360,7 +360,7 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: _save,
-              icon: const Icon(Icons.save),
+              icon: const Icon(Icons.save_rounded),
               label: Text(widget.task == null ? 'Criar' : 'Guardar'),
             ),
           ],

@@ -31,6 +31,23 @@ class HabitService {
     return ((feitos / total) * 100).round().clamp(0, 100);
   }
 
+  /// Sequência actual de dias consecutivos com check-in, terminando hoje ou
+  /// ontem (uma falha de hoje ainda não quebra a sequência até à meia-noite).
+  static int streakActual(List<DateTime> checkinDates) {
+    final dias = checkinDates.map(_dia).toSet();
+    var cursor = _dia(DateTime.now());
+    if (!dias.contains(cursor)) {
+      cursor = cursor.subtract(const Duration(days: 1));
+      if (!dias.contains(cursor)) return 0;
+    }
+    var streak = 0;
+    while (dias.contains(cursor)) {
+      streak++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
   static Future<bool> feitoHoje(AppDatabase db, int taskId) async {
     final hoje = _dia(DateTime.now());
     final row = await (db.select(db.habitCheckins)

@@ -8,19 +8,25 @@ import '../providers/task_selection_provider.dart';
 import '../services/goal_progress_service.dart';
 import '../services/task_reminder_service.dart';
 import '../services/habit_service.dart';
+import '../theme/pulso_theme.dart';
+import '../theme/semantic_colors.dart';
 import '../widgets/confirm_dialog.dart';
+import '../widgets/habit_heatmap.dart';
 import 'add_task_screen.dart';
+
+const _corMedia = Color(0xFF9C6BE0); // roxo — distinto do azul de marca
+const _corAlerta = Color(0xFFF57C00); // mesma laranja usada em Objectivos/Estatísticas
 
 // ----- Cor por prioridade -----
 Color priorityColor(String p) {
   switch (p) {
     case 'Alta':
-      return const Color(0xFFE5484D);
+      return PulsoColors.danger;
     case 'Baixa':
-      return const Color(0xFF607D8B);
+      return PulsoColors.textMutedLight;
     case 'Média':
     default:
-      return const Color(0xFF2F6BED);
+      return _corMedia;
   }
 }
 
@@ -42,14 +48,14 @@ DueInfo dueInfo(DateTime? due) {
   final h = DateTime(now.year, now.month, now.day);
   final dias = t.difference(h).inDays;
   if (dias < 0) {
-    return DueInfo('Atrasadas', 'atrasada ${-dias} d', const Color(0xFFE5484D), true);
+    return DueInfo('Atrasadas', 'atrasada ${-dias} d', PulsoColors.danger, true);
   }
-  if (dias == 0) return const DueInfo('Hoje', 'hoje', Color(0xFFE5484D), false);
-  if (dias == 1) return const DueInfo('Esta semana', 'amanhã', Color(0xFFF57C00), false);
+  if (dias == 0) return DueInfo('Hoje', 'hoje', PulsoColors.danger, false);
+  if (dias == 1) return const DueInfo('Esta semana', 'amanhã', _corAlerta, false);
   if (dias <= 7) {
-    return DueInfo('Esta semana', 'em $dias d', const Color(0xFFF57C00), false);
+    return DueInfo('Esta semana', 'em $dias d', _corAlerta, false);
   }
-  return DueInfo('Depois', 'em $dias d', const Color(0xFF388E3C), false);
+  return DueInfo('Depois', 'em $dias d', SemanticColors.receita, false);
 }
 
 const _grupoOrdem = ['Atrasadas', 'Hoje', 'Esta semana', 'Depois', 'Sem data'];
@@ -63,6 +69,14 @@ class TasksScreen extends ConsumerStatefulWidget {
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
   bool _showFilters = false;
+  final _searchCtrl = TextEditingController();
+  String _pesquisa = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _recompute(Iterable<int?> goalIds) async {
     for (final id in goalIds.whereType<int>().toSet()) {
@@ -112,7 +126,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         appBar: selecting
             ? AppBar(
                 leading: IconButton(
-                  icon: const Icon(Icons.close),
+                  tooltip: 'Cancelar seleção',
+                  icon: const Icon(Icons.close_rounded),
                   onPressed: () =>
                       ref.read(taskSelectionProvider.notifier).clear(),
                 ),
@@ -121,13 +136,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 actions: [
                   IconButton(
                     tooltip: 'Concluir',
-                    icon: const Icon(Icons.done_all),
+                    icon: const Icon(Icons.done_all_rounded),
                     onPressed: () => _bulkComplete(
                         {...selected}, tasksAsync.valueOrNull ?? const []),
                   ),
                   IconButton(
                     tooltip: 'Eliminar',
-                    icon: const Icon(Icons.delete_outline),
+                    icon: const Icon(Icons.delete_outline_rounded),
                     onPressed: () => _bulkDelete(
                         {...selected}, tasksAsync.valueOrNull ?? const []),
                   ),
@@ -141,17 +156,20 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         ? 'Esconder concluídas'
                         : 'Mostrar concluídas',
                     icon: Icon(filter.showCompleted
-                        ? Icons.check_circle
-                        : Icons.check_circle_outline),
+                        ? Icons.check_circle_rounded
+                        : Icons.check_circle_outline_rounded),
                     onPressed: () => ref
                         .read(taskFilterProvider.notifier)
                         .toggleCompleted(!filter.showCompleted),
                   ),
                   IconButton(
                     tooltip: 'Filtros',
-                    icon: Icon(filter.active
-                        ? Icons.filter_alt
-                        : Icons.filter_alt_outlined),
+                    icon: Icon(
+                      Icons.filter_alt_rounded,
+                      color: filter.active
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
                     onPressed: () =>
                         setState(() => _showFilters = !_showFilters),
                   ),
@@ -159,6 +177,32 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               ),
         body: Column(
           children: [
+            if (!selecting)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: (v) => setState(() => _pesquisa = v.trim().toLowerCase()),
+                  decoration: InputDecoration(
+                    hintText: 'Pesquisar tarefa',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                    suffixIcon: _pesquisa.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _pesquisa = '');
+                            },
+                          ),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(PulsoRadius.lg),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
             if (_showFilters && !selecting)
               _FilterPanel(goals: goals),
             Expanded(
@@ -173,14 +217,43 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       return false;
                     }
                     if (!filter.showCompleted && t.isCompleted) return false;
+                    if (_pesquisa.isNotEmpty &&
+                        !t.title.toLowerCase().contains(_pesquisa)) {
+                      return false;
+                    }
                     return true;
                   }).toList();
 
                   if (list.isEmpty) {
-                    return const Center(
+                    final p = PulsoPalette.of(context);
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(32),
-                        child: Text('Nada por aqui. Toca em + para criar.'),
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.checklist_rounded,
+                                size: 56, color: p.textMuted),
+                            const SizedBox(height: 16),
+                            Text('Nada por aqui.',
+                                style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Cria a tua primeira tarefa para começares a organizar o dia.',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const AddTaskScreen()),
+                              ),
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text('Criar tarefa'),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }
@@ -249,14 +322,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
             ),
           ],
         ),
-        floatingActionButton: selecting
-            ? null
-            : FloatingActionButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AddTaskScreen()),
-                ),
-                child: const Icon(Icons.add),
-              ),
       ),
     );
   }
@@ -383,10 +448,10 @@ class _TaskCard extends ConsumerWidget {
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(PulsoRadius.md),
         side: BorderSide(
           color: selected ? scheme.primary : scheme.outlineVariant,
-          width: selected ? 2 : 1,
+          width: selected ? 1.6 : 1,
         ),
       ),
       color: selected ? scheme.primary.withValues(alpha: 0.06) : null,
@@ -401,26 +466,34 @@ class _TaskCard extends ConsumerWidget {
           }
         },
         onLongPress: selecting ? null : () => _toggleSel(ref),
-        child: IntrinsicHeight(
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: cor, width: 5)),
+          ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(width: 5, color: cor),
               Padding(
                 padding: const EdgeInsets.only(left: 4),
                 child: selecting
                     ? IconButton(
+                        tooltip: selected ? 'Remover da seleção' : 'Selecionar',
                         icon: Icon(
                           selected
-                              ? Icons.check_circle
-                              : Icons.circle_outlined,
+                              ? Icons.check_circle_rounded
+                              : Icons.circle_rounded,
                           color: selected ? scheme.primary : scheme.outline,
                         ),
                         onPressed: () => _toggleSel(ref),
                       )
-                    : Checkbox(
-                        value: done,
-                        onChanged: (v) => _setCompleted(ref, v ?? false),
+                    : Semantics(
+                        label: done
+                            ? 'Marcar "${task.title}" como não concluída'
+                            : 'Marcar "${task.title}" como concluída',
+                        child: Checkbox(
+                          value: done,
+                          onChanged: (v) => _setCompleted(ref, v ?? false),
+                        ),
                       ),
               ),
               Expanded(
@@ -433,40 +506,44 @@ class _TaskCard extends ConsumerWidget {
                         task.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          decoration:
-                              done ? TextDecoration.lineThrough : null,
-                          color: done ? scheme.onSurfaceVariant : null,
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              decoration:
+                                  done ? TextDecoration.lineThrough : null,
+                              color: done ? scheme.onSurfaceVariant : null,
+                            ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: PulsoSpace.xs),
                       Row(
                         children: [
                           _Pill(text: task.priority, color: cor),
                           if (!done) ...[
-                            const SizedBox(width: 6),
+                            const SizedBox(width: PulsoSpace.sm),
                             Text(
                               due.texto,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: due.atrasada
-                                    ? const Color(0xFFE5484D)
-                                    : scheme.onSurfaceVariant,
-                                fontWeight: due.atrasada
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: due.atrasada
+                                        ? PulsoColors.danger
+                                        : scheme.onSurfaceVariant,
+                                    fontWeight: due.atrasada
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
                             ),
                           ],
                           if (goalName != null) ...[
-                            const SizedBox(width: 6),
+                            const SizedBox(width: PulsoSpace.sm),
                             Flexible(
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.flag_outlined,
+                                  Icon(Icons.flag_rounded,
                                       size: 12,
                                       color: scheme.onSurfaceVariant),
                                   const SizedBox(width: 2),
@@ -475,9 +552,9 @@ class _TaskCard extends ConsumerWidget {
                                       goalName!,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: scheme.onSurfaceVariant),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall,
                                     ),
                                   ),
                                 ],
@@ -522,21 +599,115 @@ class _TaskCard extends ConsumerWidget {
     return Dismissible(
       key: ValueKey(task.id),
       direction: DismissDirection.horizontal,
-      background: _swipeBg(Alignment.centerLeft),
-      secondaryBackground: _swipeBg(Alignment.centerRight),
+      background: _swipeBg(context, Alignment.centerLeft),
+      secondaryBackground: _swipeBg(context, Alignment.centerRight),
       confirmDismiss: (_) => confirmarEliminacao(context, task.title),
       onDismissed: (_) => _delete(ref),
       child: card,
     );
   }
 
-  Widget _swipeBg(Alignment a) => Container(
-        color: Colors.red,
+  Widget _swipeBg(BuildContext context, Alignment a) => Container(
+        color: Theme.of(context).colorScheme.error,
         alignment: a,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: const Icon(Icons.delete_rounded, color: Colors.white),
       );
 }
+
+/// Mini-cartão de estatística dentro do cartão de hábito (feitos/%/sequência).
+/// Anel de progresso semanal com chama no centro — mostra a sequência
+/// actual de dias consecutivos (até 7, reinicia visualmente por semana).
+class _StreakRing extends StatelessWidget {
+  final int streak;
+  const _StreakRing({required this.streak});
+
+  static const _corChama = Color(0xFFE8A13C);
+
+  @override
+  Widget build(BuildContext context) {
+    final p = PulsoPalette.of(context);
+    final progresso = (streak % 7 == 0 && streak > 0) ? 1.0 : (streak % 7) / 7;
+
+    return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 34,
+            height: 34,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: progresso),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, v, _) => CircularProgressIndicator(
+                    value: v,
+                    strokeWidth: 3.5,
+                    backgroundColor: p.border,
+                    valueColor: const AlwaysStoppedAnimation(_corChama),
+                  ),
+                ),
+                Icon(Icons.local_fire_department_rounded,
+                    size: 16,
+                    color: streak > 0 ? _corChama : p.textMuted),
+              ],
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text('$streak dias',
+              style: Theme.of(context).textTheme.labelSmall),
+        ],
+    );
+  }
+}
+
+class _HabitMiniStat extends StatelessWidget {
+  final String valor;
+  final String label;
+  final IconData? icone;
+  final Color? destaque;
+
+  const _HabitMiniStat({
+    required this.valor,
+    required this.label,
+    this.icone,
+    this.destaque,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = PulsoPalette.of(context);
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icone != null) ...[
+              Icon(icone, size: 13, color: destaque ?? p.textPrimary),
+              const SizedBox(width: 2),
+            ],
+            Text(valor,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: destaque ?? p.textPrimary,
+                    )),
+          ],
+        ),
+        const SizedBox(height: 1),
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
+      ],
+    );
+  }
+}
+
+Widget _divisor(BuildContext context) => Container(
+      width: 1,
+      color: PulsoPalette.of(context).border,
+    );
 
 class _Pill extends StatelessWidget {
   final String text;
@@ -546,14 +717,17 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+          horizontal: PulsoSpace.sm, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(PulsoRadius.sm),
       ),
       child: Text(text,
-          style: TextStyle(
-              fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+          style: Theme.of(context)
+              .textTheme
+              .labelSmall
+              ?.copyWith(color: color, fontWeight: FontWeight.w700)),
     );
   }
 }
@@ -599,15 +773,16 @@ class _HabitCard extends ConsumerWidget {
         c.date.year == hoje.year &&
         c.date.month == hoje.month &&
         c.date.day == hoje.day);
+    final streak = HabitService.streakActual(checkins.map((c) => c.date).toList());
 
     final card = Card(
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(PulsoRadius.md),
         side: BorderSide(
           color: selected ? scheme.primary : scheme.outlineVariant,
-          width: selected ? 2 : 1,
+          width: selected ? 1.6 : 1,
         ),
       ),
       color: selected ? scheme.primary.withValues(alpha: 0.06) : null,
@@ -622,17 +797,20 @@ class _HabitCard extends ConsumerWidget {
           }
         },
         onLongPress: selecting ? null : () => _toggleSel(ref),
-        child: IntrinsicHeight(
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: cor, width: 5)),
+          ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(width: 5, color: cor),
               if (selecting)
                 Padding(
                   padding: const EdgeInsets.only(left: 4),
                   child: IconButton(
+                    tooltip: selected ? 'Remover da seleção' : 'Selecionar',
                     icon: Icon(
-                      selected ? Icons.check_circle : Icons.circle_outlined,
+                      selected ? Icons.check_circle_rounded : Icons.circle_rounded,
                       color: selected ? scheme.primary : scheme.outline,
                     ),
                     onPressed: () => _toggleSel(ref),
@@ -646,81 +824,99 @@ class _HabitCard extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.repeat, size: 14, color: cor),
+                          Icon(Icons.repeat_rounded, size: 14, color: cor),
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               task.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                                decoration: task.habitClosed
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                color: task.habitClosed
-                                    ? scheme.onSurfaceVariant
-                                    : null,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    decoration: task.habitClosed
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    color: task.habitClosed
+                                        ? scheme.onSurfaceVariant
+                                        : null,
+                                  ),
                             ),
                           ),
                           _Pill(text: task.priority, color: cor),
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: PulsoSpace.xs),
                       Text(
                         task.habitClosed
-                            ? 'Terminado · $feitos de $totalDias dias'
+                            ? 'Terminado'
                             : '${task.habitStartDate?.day}/${task.habitStartDate?.month} → '
                                 '${task.habitEndDate?.day}/${task.habitEndDate?.month}'
-                                '  ·  $feitos de $totalDias dias'
                                 '  ·  $nLembretes lembrete${nLembretes == 1 ? '' : 's'}/dia'
                                 '${goalName != null ? '  ·  $goalName' : ''}',
-                        style: TextStyle(
-                            fontSize: 12, color: scheme.onSurfaceVariant),
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: pct / 100,
-                                minHeight: 8,
-                                backgroundColor: scheme.surfaceContainerHighest,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    pct >= 100 ? const Color(0xFF388E3C) : cor),
-                              ),
-                            ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: PulsoPalette.of(context).surfaceElevated,
+                          borderRadius: BorderRadius.circular(PulsoRadius.sm),
+                        ),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                  child: _HabitMiniStat(
+                                      valor: '$feitos', label: 'Feitos')),
+                              _divisor(context),
+                              Expanded(
+                                  child: _HabitMiniStat(
+                                      valor: '$pct%',
+                                      label: 'Completo',
+                                      destaque: pct >= 100
+                                          ? SemanticColors.receita
+                                          : cor)),
+                              _divisor(context),
+                              Expanded(
+                                  child: _StreakRing(streak: streak)),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Text('$pct%',
-                              style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.bold)),
-                        ],
+                        ),
                       ),
+                      if (task.habitStartDate != null &&
+                          task.habitEndDate != null) ...[
+                        const SizedBox(height: 14),
+                        HabitHeatmap(
+                          start: task.habitStartDate!,
+                          end: task.habitEndDate!,
+                          checkins: checkins
+                              .map((c) => DateTime(
+                                  c.date.year, c.date.month, c.date.day))
+                              .toSet(),
+                        ),
+                      ],
                       if (!task.habitClosed && !selecting) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
-                          child: OutlinedButton.icon(
+                          height: 40,
+                          child: ElevatedButton.icon(
                             onPressed: () => HabitService.alternarHoje(ref, task),
                             icon: Icon(feitoHoje
-                                ? Icons.check_circle
-                                : Icons.radio_button_unchecked),
+                                ? Icons.check_circle_rounded
+                                : Icons.radio_button_unchecked_rounded),
                             label: Text(
                                 feitoHoje ? 'Feito hoje' : 'Marcar hoje'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: feitoHoje
-                                  ? const Color(0xFF388E3C)
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: feitoHoje
+                                  ? SemanticColors.receita
                                   : scheme.primary,
-                              side: BorderSide(
-                                color: feitoHoje
-                                    ? const Color(0xFF388E3C)
-                                    : scheme.primary,
-                              ),
+                              foregroundColor: Colors.white,
+                              shape: const StadiumBorder(),
                             ),
                           ),
                         ),
@@ -762,16 +958,16 @@ class _HabitCard extends ConsumerWidget {
       key: ValueKey(task.id),
       direction: DismissDirection.horizontal,
       background: Container(
-        color: Colors.red,
+        color: Theme.of(context).colorScheme.error,
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: const Icon(Icons.delete_rounded, color: Colors.white),
       ),
       secondaryBackground: Container(
-        color: Colors.red,
+        color: Theme.of(context).colorScheme.error,
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: const Icon(Icons.delete_rounded, color: Colors.white),
       ),
       confirmDismiss: (_) => confirmarEliminacao(context, task.title),
       onDismissed: (_) => _delete(ref),

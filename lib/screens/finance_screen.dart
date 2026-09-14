@@ -1,14 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../database/database.dart';
 import '../providers/transaction_providers.dart';
 import '../providers/filter_providers.dart';
 import '../providers/settings_providers.dart';
 import '../providers/budget_providers.dart';
+import '../providers/stats_providers.dart';
 import '../services/sync_service.dart';
 import '../theme/semantic_colors.dart';
+import '../theme/category_style.dart';
+import '../theme/pulso_theme.dart';
 import '../widgets/confirm_dialog.dart';
 import 'add_transaction_screen.dart';
 import 'budgets_screen.dart';
+
+/// Barra de progresso que anima do zero até ao valor actual sempre que este
+/// muda — dá vida a algo que, estático, parecia só uma barra genérica.
+class _AnimatedBar extends StatelessWidget {
+  final double value;
+  final Color color;
+  final Color background;
+  final double height;
+
+  const _AnimatedBar({
+    required this.value,
+    required this.color,
+    required this.background,
+    this.height = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value.clamp(0, 1)),
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, _) => ClipRRect(
+        borderRadius: BorderRadius.circular(height / 2),
+        child: LinearProgressIndicator(
+          value: v,
+          minHeight: height,
+          backgroundColor: background,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+String _tituloDia(DateTime d) {
+  final hoje = DateTime.now();
+  final h = DateTime(hoje.year, hoje.month, hoje.day);
+  final dia = DateTime(d.year, d.month, d.day);
+  final diff = h.difference(dia).inDays;
+  if (diff == 0) return 'Hoje';
+  if (diff == 1) return 'Ontem';
+  const meses = [
+    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
+  ];
+  return '${d.day} ${meses[d.month - 1]}${d.year != hoje.year ? ' ${d.year}' : ''}';
+}
 
 class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
@@ -41,7 +93,8 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       content: Text(ok
           ? 'Sincronização completa'
           : 'Falha na sincronização. Verifica a ligação.'),
-      backgroundColor: ok ? null : Colors.red,
+      backgroundColor:
+          ok ? null : Theme.of(context).colorScheme.error,
     ));
   }
 
@@ -50,88 +103,126 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final balanceAsync = ref.watch(balanceProvider);
     final filter = ref.watch(financeFilterProvider);
     final filteredAsync = ref.watch(filteredTransactionsProvider);
     final moeda = ref.watch(settingsProvider).currency;
     final anoActual = DateTime.now().year;
     final gastosMes = ref.watch(currentMonthExpensesByCategoryProvider);
     final overCount = ref.watch(overBudgetCountProvider);
+    final geral = ref.watch(overallBudgetStatusProvider);
+    final monthly = ref.watch(monthlyStatsProvider).valueOrNull ?? const {};
     final scheme = Theme.of(context).colorScheme;
+
+    final now = DateTime.now();
+    final chaveMes = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final mesActual = monthly[chaveMes];
+    final receitasMes = mesActual?['receitas'] ?? 0;
+    final despesasMes = mesActual?['despesas'] ?? 0;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Carteira'),
         actions: [
           IconButton(
-            icon: Icon(_showFilters ? Icons.filter_alt : Icons.filter_alt_outlined),
+            tooltip: _showFilters ? 'Esconder filtros' : 'Filtros',
+            icon: Icon(
+              Icons.filter_alt_rounded,
+              color: _showFilters
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+            ),
             onPressed: () => setState(() => _showFilters = !_showFilters),
           ),
           IconButton(
+            tooltip: 'Sincronizar',
             icon: _syncing
                 ? const SizedBox(
                     width: 20, height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.sync),
+                : const Icon(Icons.sync_rounded),
             onPressed: _syncing ? null : _sincronizar,
           ),
           IconButton(
             tooltip: 'Orçamentos',
-            icon: const Icon(Icons.pie_chart_outline),
+            icon: const Icon(Icons.pie_chart_outline_rounded),
             onPressed: _abrirOrcamentos,
           ),
         ],
       ),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            child: balanceAsync.when(
-              data: (b) => Column(
-                children: [
-                  Text('SALDO ACTUAL',
-                      style: TextStyle(
-                        fontSize: 11,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.bold,
-                        color: scheme.onPrimaryContainer.withValues(alpha: 0.7),
-                      )),
-                  const SizedBox(height: 4),
-                  Text('${b.toStringAsFixed(2)} $moeda',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: scheme.onPrimaryContainer,
-                      )),
-                ],
-              ),
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
-              error: (e, _) => const Text('Erro'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: _HeroMes(
+              receitas: receitasMes,
+              despesas: despesasMes,
+              moeda: moeda,
             ),
           ),
+
+          if (geral.active)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: InkWell(
+                onTap: _abrirOrcamentos,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Limite mensal',
+                            style: Theme.of(context).textTheme.labelLarge),
+                        const Spacer(),
+                        Text(
+                          '${geral.spent.toStringAsFixed(0)} / '
+                          '${geral.limit.toStringAsFixed(0)} $moeda',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: geral.over ? scheme.error : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    _AnimatedBar(
+                      value: geral.pct.toDouble(),
+                      color: geral.over ? scheme.error : scheme.primary,
+                      background: scheme.surfaceContainerHighest,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          if (geral.over)
+            Material(
+              color: scheme.errorContainer,
+              child: ListTile(
+                dense: true,
+                leading: Icon(Icons.warning_amber_rounded, color: scheme.onErrorContainer),
+                title: Text(
+                  'Limite mensal geral ultrapassado',
+                  style: TextStyle(color: scheme.onErrorContainer),
+                ),
+                trailing: Icon(Icons.chevron_right_rounded, color: scheme.onErrorContainer),
+                onTap: _abrirOrcamentos,
+              ),
+            ),
 
           if (overCount > 0)
             Material(
               color: scheme.errorContainer,
               child: ListTile(
                 dense: true,
-                leading: Icon(Icons.warning_amber, color: scheme.onErrorContainer),
+                leading: Icon(Icons.warning_amber_rounded, color: scheme.onErrorContainer),
                 title: Text(
                   overCount == 1
                       ? '1 orçamento ultrapassado este mês'
                       : '$overCount orçamentos ultrapassados este mês',
                   style: TextStyle(color: scheme.onErrorContainer),
                 ),
-                trailing: Icon(Icons.chevron_right, color: scheme.onErrorContainer),
+                trailing: Icon(Icons.chevron_right_rounded, color: scheme.onErrorContainer),
                 onTap: _abrirOrcamentos,
               ),
             ),
@@ -212,7 +303,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                   ),
                   IconButton(
                     tooltip: 'Limpar filtros',
-                    icon: const Icon(Icons.clear),
+                    icon: const Icon(Icons.clear_rounded),
                     onPressed: () =>
                         ref.read(financeFilterProvider.notifier).reset(),
                   ),
@@ -230,27 +321,69 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.receipt_long_outlined,
+                          Icon(Icons.receipt_long_rounded,
                               size: 56, color: scheme.onSurfaceVariant),
-                          const SizedBox(height: 12),
-                          const Text('Sem transações.'),
+                          const SizedBox(height: 16),
+                          Text('Sem transações.',
+                              style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: 4),
-                          Text('Toca em + para registar a primeira.',
-                              style: TextStyle(color: scheme.onSurfaceVariant)),
+                          Text(
+                            'Regista a primeira despesa ou receita, ou espera '
+                            'que a app detecte uma SMS do M-Pesa/BIM.',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const AddTransactionScreen()),
+                            ),
+                            icon: const Icon(Icons.add_rounded),
+                            label: const Text('Registar transação'),
+                          ),
                         ],
                       ),
                     ),
                   );
                 }
+                final items = <Object>[];
+                DateTime? ultimoDia;
+                for (final tx in txList) {
+                  final dia = DateTime(tx.date.year, tx.date.month, tx.date.day);
+                  if (ultimoDia == null || dia != ultimoDia) {
+                    items.add(dia);
+                    ultimoDia = dia;
+                  }
+                  items.add(tx);
+                }
+
                 return ListView.builder(
                   padding: const EdgeInsets.only(bottom: 88, top: 4),
-                  itemCount: txList.length,
+                  itemCount: items.length,
                   itemBuilder: (_, i) {
-                    final tx = txList[i];
+                    final item = items[i];
+                    if (item is DateTime) {
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                        child: Text(
+                          _tituloDia(item).toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            letterSpacing: 1,
+                            fontWeight: FontWeight.bold,
+                            color: scheme.primary,
+                          ),
+                        ),
+                      );
+                    }
+                    final tx = item as Transaction;
                     final isReceita = tx.type == 'receita';
                     final cor = isReceita
                         ? SemanticColors.receita
                         : SemanticColors.despesa;
+                    final catCor = CategoryStyle.color(tx.category);
                     return Dismissible(
                       key: ValueKey(tx.id),
                       direction: DismissDirection.endToStart,
@@ -258,7 +391,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                         color: SemanticColors.despesa,
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: const Icon(Icons.delete, color: Colors.white),
+                        child: const Icon(Icons.delete_rounded, color: Colors.white),
                       ),
                       confirmDismiss: (_) => confirmarEliminacao(
                           context, tx.description ?? tx.category),
@@ -266,19 +399,17 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                           ref.read(deleteTransactionProvider(tx.id)),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: cor.withValues(alpha: 0.12),
-                          foregroundColor: cor,
+                          backgroundColor: catCor.withValues(alpha: 0.14),
+                          foregroundColor: catCor,
                           child: Icon(
-                            isReceita
-                                ? Icons.arrow_downward
-                                : Icons.arrow_upward,
+                            CategoryStyle.icon(tx.category),
                             size: 20,
                           ),
                         ),
                         title: Text(tx.description ?? tx.category,
                             style: const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(
-                          '${tx.category} · ${tx.date.day}/${tx.date.month}/${tx.date.year}'
+                          '${tx.category}'
                           '${tx.source != 'manual' ? '  ·  ${tx.source}' : ''}',
                         ),
                         trailing: Text(
@@ -305,12 +436,117 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
-        ),
-        child: const Icon(Icons.add),
+    );
+  }
+}
+
+class _HeroMes extends StatelessWidget {
+  final double receitas;
+  final double despesas;
+  final String moeda;
+  const _HeroMes({
+    required this.receitas,
+    required this.despesas,
+    required this.moeda,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = PulsoPalette.of(context);
+    final total = receitas + despesas;
+    final fracReceita = total <= 0 ? 0.5 : receitas / total;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(PulsoRadius.lg),
+        color: p.surfaceElevated,
+        border: Border.all(color: p.borderSubtle),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('ESTE MÊS', style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _HeroStat(
+                  label: 'Receitas',
+                  valor: '${receitas.toStringAsFixed(0)} $moeda',
+                  color: SemanticColors.receita,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 34,
+                margin: const EdgeInsets.symmetric(horizontal: 14),
+                color: p.borderSubtle,
+              ),
+              Expanded(
+                child: _HeroStat(
+                  label: 'Despesas',
+                  valor: '${despesas.toStringAsFixed(0)} $moeda',
+                  color: SemanticColors.despesa,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.5, end: fracReceita),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (context, v, _) => Row(
+                children: [
+                  Expanded(
+                    flex: (v * 1000).round().clamp(1, 999),
+                    child: Container(height: 5, color: SemanticColors.receita),
+                  ),
+                  Expanded(
+                    flex: ((1 - v) * 1000).round().clamp(1, 999),
+                    child: Container(height: 5, color: SemanticColors.despesa),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  final String label;
+  final String valor;
+  final Color color;
+  const _HeroStat(
+      {required this.label, required this.valor, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text(label, style: textTheme.bodySmall),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(valor, style: textTheme.displayMedium?.copyWith(fontSize: 22)),
+      ],
     );
   }
 }
@@ -339,31 +575,31 @@ class _BudgetSummary extends ConsumerWidget {
                 Text('Orçamentos',
                     style: Theme.of(context).textTheme.labelLarge),
                 const Spacer(),
-                Icon(Icons.chevron_right, color: scheme.outline, size: 18),
+                Icon(Icons.chevron_right_rounded, color: scheme.outline, size: 18),
               ],
             ),
             const SizedBox(height: 6),
             for (final s in status)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
+                    Icon(CategoryStyle.icon(s.budget.category),
+                        size: 15, color: CategoryStyle.color(s.budget.category)),
+                    const SizedBox(width: 6),
                     SizedBox(
-                      width: 90,
+                      width: 78,
                       child: Text(s.budget.category,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 12)),
                     ),
                     Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
-                        child: LinearProgressIndicator(
-                          value: s.pct.clamp(0, 1),
-                          minHeight: 10,
-                          backgroundColor: scheme.surfaceContainerHighest,
-                          color: s.over ? scheme.error : scheme.primary,
-                        ),
+                      child: _AnimatedBar(
+                        value: s.pct.toDouble(),
+                        color: s.over ? scheme.error : scheme.primary,
+                        background: scheme.surfaceContainerHighest,
+                        height: 9,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -421,7 +657,7 @@ class _MonthExpenseChart extends StatelessWidget {
                 const Spacer(),
                 Text('${total.toStringAsFixed(0)} $moeda',
                     style: const TextStyle(fontWeight: FontWeight.bold)),
-                Icon(expanded ? Icons.expand_less : Icons.expand_more),
+                Icon(expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded),
               ],
             ),
           ),
@@ -433,25 +669,25 @@ class _MonthExpenseChart extends StatelessWidget {
               children: [
                 for (final e in data.take(6))
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       children: [
+                        Icon(CategoryStyle.icon(e.key),
+                            size: 15, color: CategoryStyle.color(e.key)),
+                        const SizedBox(width: 6),
                         SizedBox(
-                          width: 90,
+                          width: 78,
                           child: Text(e.key,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(fontSize: 12)),
                         ),
                         Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(3),
-                            child: LinearProgressIndicator(
-                              value: maxV <= 0 ? 0 : e.value / maxV,
-                              minHeight: 10,
-                              backgroundColor: scheme.surfaceContainerHighest,
-                              color: scheme.primary,
-                            ),
+                          child: _AnimatedBar(
+                            value: maxV <= 0 ? 0 : e.value / maxV,
+                            color: CategoryStyle.color(e.key),
+                            background: scheme.surfaceContainerHighest,
+                            height: 9,
                           ),
                         ),
                         const SizedBox(width: 8),

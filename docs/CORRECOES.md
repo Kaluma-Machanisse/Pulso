@@ -611,3 +611,54 @@ Objectivos · Finanças · Estatísticas · Configurações.
 
 - `dart analyze lib` → **No issues found**.
 - `flutter run -d linux` OK, sem excepções nos logs.
+
+---
+
+# Design system, limite mensal geral e redesenho — Setembro 2026
+
+- **Limite geral mensal**: novo campo em Definições/Orçamentos
+  (`AppSettings.monthlyLimit`, `overallBudgetStatusProvider`) — compara o
+  total de despesas do mês com um limite único, independente das categorias.
+  Barra de progresso e aviso na Carteira, secção própria em Orçamentos.
+- **Design system** (`pulso_theme.dart`): tokens completos de cor
+  (Primary/Hover/Active, Surface/SurfaceElevated/Border/BorderSubtle, Text
+  Primary/Secondary/Muted/Disabled, semânticas), espaçamento (`PulsoSpace`)
+  e raio (`PulsoRadius`); tipografia hierárquica (Familjen Grotesk para
+  títulos/números, Hanken Grotesk para o resto); `PulsoPalette` passou a
+  `ThemeExtension` idiomático (com `lerp`) em vez de classe estática, com
+  `context.colors`/`context.textTheme` (`context_x.dart`) para acesso mais
+  limpo. Dark mode mais profundo (quase-negro), cartões sem borda a
+  "flutuar" só por contraste.
+- **Ícones unificados**: toda a app passou a usar a família *rounded* do
+  Material (antes misturava preenchidos e outline, com aspecto inconsistente
+  e "recto"); estados activo/inactivo passaram a distinguir-se por cor em
+  vez de forma do ícone, onde não havia variante rounded+outline combinada.
+- **Carteira redesenhada**: cartão "Este mês" mais calmo (superfície
+  elevada + borda subtil, sem gradiente/sombra pesada), ícones próprios por
+  categoria (`category_style.dart`), transações agrupadas por dia
+  (Hoje/Ontem/data), barras de progresso animadas, Saldo acumulado removido
+  (confundia — o utilizador via através dos gráficos de receitas/despesas).
+- **Navegação inferior** elevada para `NavigationBar` (Material 3); novo
+  botão central flutuante "+" com menu rápido (Nova tarefa/Novo
+  objectivo/Nova transação), substituindo os FABs individuais de cada aba.
+- **Tarefas-hábito redesenhado**: cartão do hábito ganhou uma grelha de
+  check-ins tipo heatmap (`habit_heatmap.dart`, alinhada por dia da semana,
+  "feito" preenchido vs "falhado" só contorno, legenda em texto), sequência
+  actual de dias consecutivos (`HabitService.streakActual`) com anel de
+  progresso semanal, e uma barra de pesquisa por título de tarefa.
+- **Estatísticas**: badges de tendência (↑/↓ % vs mês anterior) nos
+  cartões de Receitas/Despesas, e nova secção "Insights" (média diária,
+  categoria principal com mini-donut, semana de pico com destaque).
+- **Estados vazios**: Tarefas/Carteira/Objectivos passaram a ter ícone +
+  título + descrição + botão de acção, em vez de só texto.
+- **Acessibilidade**: tooltips em falta adicionados aos ícones de acção;
+  `Semantics` no checkbox de concluir tarefa.
+- Corrigido um bug de layout introduzido nesta ronda (`CrossAxisAlignment.
+  stretch` numa `Row` sem altura limitada, dentro do cartão de hábito),
+  que causava um "crash" em cascata de erros de layout — não houve perda de
+  dados; confirmado directamente na base de dados local.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter run -d linux` OK, sem excepções nos logs.

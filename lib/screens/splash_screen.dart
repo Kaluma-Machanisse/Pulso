@@ -69,9 +69,9 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? PulsoColors.bgDark : PulsoColors.bgLight;
-    final ink = isDark ? PulsoColors.inkDark : PulsoColors.inkLight;
+    final ink = isDark ? PulsoColors.textPrimaryDark : PulsoColors.textPrimaryLight;
     final primary = isDark ? PulsoColors.primaryDark : PulsoColors.primaryLight;
-    final muted = isDark ? PulsoColors.mutedDark : PulsoColors.mutedLight;
+    final muted = isDark ? PulsoColors.textMutedDark : PulsoColors.textMutedLight;
     final noMotion = MediaQuery.of(context).disableAnimations;
 
     return Scaffold(
@@ -123,8 +123,8 @@ class _SplashScreenState extends State<SplashScreen>
                       child: LinearProgressIndicator(
                         color: primary,
                         backgroundColor: isDark
-                            ? PulsoColors.lineDark
-                            : PulsoColors.lineLight,
+                            ? PulsoColors.borderDark
+                            : PulsoColors.borderLight,
                       ),
                     ),
                   ),

@@ -45,21 +45,6 @@ final currentMonthExpensesByCategoryProvider =
   return list;
 });
 
-final balanceProvider = StreamProvider<double>((ref) {
-  final db = ref.watch(databaseProvider);
-  return db.select(db.transactions).watch().map((txList) {
-    double balance = 0;
-    for (final tx in txList) {
-      if (tx.type == 'receita') {
-        balance += tx.amount;
-      } else {
-        balance -= tx.amount;
-      }
-    }
-    return balance;
-  });
-});
-
 // --- Novo: Provider de transações filtradas ---
 final filteredTransactionsProvider = Provider<AsyncValue<List<Transaction>>>((ref) {
   final allTxsAsync = ref.watch(transactionsProvider);

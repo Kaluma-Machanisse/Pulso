@@ -8,6 +8,8 @@ import '../services/goal_archive_service.dart';
 import '../providers/database_provider.dart';
 import '../widgets/confirm_dialog.dart';
 import '../services/report_service.dart';
+import '../theme/pulso_theme.dart';
+import '../theme/semantic_colors.dart';
 import 'add_goal_screen.dart';
 import 'archived_goals_screen.dart';
 
@@ -15,14 +17,14 @@ import 'archived_goals_screen.dart';
 Color importanceColor(String importance) {
   switch (importance) {
     case 'Baixa':
-      return const Color(0xFF607D8B); // blue grey
+      return PulsoColors.textMutedLight;
     case 'Alta':
-      return const Color(0xFFF57C00); // orange
+      return const Color(0xFFF57C00); // laranja — mesma escala de urgência
     case 'Crítica':
-      return const Color(0xFFD32F2F); // red
+      return PulsoColors.danger;
     case 'Média':
     default:
-      return const Color(0xFF1976D2); // blue
+      return PulsoColors.primaryLight;
   }
 }
 
@@ -44,10 +46,10 @@ DeadlineStatus deadlineInfo(DateTime? target) {
   final dias = t.difference(h).inDays;
 
   if (dias < 0) {
-    return DeadlineStatus('atrasado ${-dias} d', const Color(0xFFD32F2F), true);
+    return DeadlineStatus('atrasado ${-dias} d', PulsoColors.danger, true);
   }
   if (dias == 0) {
-    return const DeadlineStatus('é hoje', Color(0xFFD32F2F), false);
+    return DeadlineStatus('é hoje', PulsoColors.danger, false);
   }
   if (dias <= 7) {
     return DeadlineStatus('faltam $dias d', const Color(0xFFF57C00), false);
@@ -55,7 +57,7 @@ DeadlineStatus deadlineInfo(DateTime? target) {
   if (dias <= 30) {
     return DeadlineStatus('faltam $dias d', const Color(0xFFFBC02D), false);
   }
-  return DeadlineStatus('faltam $dias d', const Color(0xFF388E3C), false);
+  return DeadlineStatus('faltam $dias d', SemanticColors.receita, false);
 }
 
 Future<void> _eliminarObjectivo(WidgetRef ref, int id) async {
@@ -98,7 +100,8 @@ class GoalsScreen extends ConsumerWidget {
         appBar: selecting
             ? AppBar(
                 leading: IconButton(
-                  icon: const Icon(Icons.close),
+                  tooltip: 'Cancelar seleção',
+                  icon: const Icon(Icons.close_rounded),
                   onPressed: () =>
                       ref.read(goalSelectionProvider.notifier).clear(),
                 ),
@@ -107,14 +110,14 @@ class GoalsScreen extends ConsumerWidget {
                 actions: [
                   IconButton(
                     tooltip: 'Selecionar todos',
-                    icon: const Icon(Icons.select_all),
+                    icon: const Icon(Icons.select_all_rounded),
                     onPressed: () => ref
                         .read(goalSelectionProvider.notifier)
                         .selectAll(allIds),
                   ),
                   IconButton(
                     tooltip: 'Eliminar',
-                    icon: const Icon(Icons.delete_outline),
+                    icon: const Icon(Icons.delete_outline_rounded),
                     onPressed: () =>
                         _eliminarSelecionados(context, ref, {...selected}),
                   ),
@@ -125,14 +128,14 @@ class GoalsScreen extends ConsumerWidget {
                 actions: [
                   IconButton(
                     tooltip: 'Objectivos arquivados',
-                    icon: const Icon(Icons.archive_outlined),
+                    icon: const Icon(Icons.archive_rounded),
                     onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
                             builder: (_) => const ArchivedGoalsScreen())),
                   ),
                   IconButton(
                     tooltip: 'Gerar relatório deste mês',
-                    icon: const Icon(Icons.summarize_outlined),
+                    icon: const Icon(Icons.summarize_rounded),
                     onPressed: () async {
                       await ReportService.generateNowForCurrentMonth(ref);
                       if (context.mounted) {
@@ -191,14 +194,6 @@ class GoalsScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Erro: $e')),
         ),
-        floatingActionButton: selecting
-            ? null
-            : FloatingActionButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AddGoalScreen()),
-                ),
-                child: const Icon(Icons.add),
-              ),
       ),
     );
   }
@@ -229,18 +224,31 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final p = PulsoPalette.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.flag_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 12),
-            Text('Ainda não tens objectivos.', style: TextStyle(fontSize: 16)),
-            SizedBox(height: 4),
-            Text('Toca em + para criar o primeiro.',
-                style: TextStyle(color: Colors.grey)),
+            Icon(Icons.flag_rounded, size: 56, color: p.textMuted),
+            const SizedBox(height: 16),
+            Text('Ainda não tens objectivos.', style: textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(
+              'Define uma meta de curto, médio ou longo prazo e liga-a a tarefas.',
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddGoalScreen()),
+              ),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Criar objectivo'),
+            ),
           ],
         ),
       ),
@@ -300,10 +308,10 @@ class _GoalCard extends ConsumerWidget {
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(PulsoRadius.md),
         side: BorderSide(
           color: selected ? scheme.primary : scheme.outlineVariant,
-          width: selected ? 2 : 1,
+          width: selected ? 1.6 : 1,
         ),
       ),
       color: selected ? scheme.primary.withValues(alpha: 0.06) : null,
@@ -318,11 +326,13 @@ class _GoalCard extends ConsumerWidget {
           }
         },
         onLongPress: selecting ? null : () => _toggle(ref),
-        child: IntrinsicHeight(
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: cor, width: 5)),
+          ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(width: 5, color: cor), // faixa de importância
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
@@ -336,8 +346,8 @@ class _GoalCard extends ConsumerWidget {
                               padding: const EdgeInsets.only(right: 8),
                               child: Icon(
                                 selected
-                                    ? Icons.check_circle
-                                    : Icons.circle_outlined,
+                                    ? Icons.check_circle_rounded
+                                    : Icons.circle_rounded,
                                 size: 20,
                                 color: selected
                                     ? scheme.primary
@@ -357,8 +367,10 @@ class _GoalCard extends ConsumerWidget {
                           Expanded(
                             child: Text(
                               goal.title,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -403,15 +415,14 @@ class _GoalCard extends ConsumerWidget {
                         padding: const EdgeInsets.only(left: 18, right: 8),
                         child: Text(
                           '${goal.category}  ·  ${prazo.texto}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: prazo.atrasado
-                                ? const Color(0xFFD32F2F)
-                                : Colors.grey.shade600,
-                            fontWeight: prazo.atrasado
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: prazo.atrasado
+                                    ? scheme.error
+                                    : scheme.onSurfaceVariant,
+                                fontWeight: prazo.atrasado
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -425,19 +436,20 @@ class _GoalCard extends ConsumerWidget {
                                 child: LinearProgressIndicator(
                                   value: progresso / 100,
                                   minHeight: 8,
-                                  backgroundColor: Colors.grey.shade300,
+                                  backgroundColor: scheme.surfaceContainerHighest,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                       progresso >= 100
-                                          ? const Color(0xFF388E3C)
+                                          ? SemanticColors.receita
                                           : cor),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Text('$progresso%',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold)),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelLarge
+                                    ?.copyWith(fontWeight: FontWeight.w700)),
                             if (!selecting)
                               TextButton(
                                 onPressed: () => _concluir(context, ref),
@@ -467,19 +479,19 @@ class _GoalCard extends ConsumerWidget {
     return Dismissible(
       key: ValueKey(goal.id),
       direction: DismissDirection.horizontal,
-      background: _swipeBg(Alignment.centerLeft),
-      secondaryBackground: _swipeBg(Alignment.centerRight),
+      background: _swipeBg(context, Alignment.centerLeft),
+      secondaryBackground: _swipeBg(context, Alignment.centerRight),
       confirmDismiss: (_) => confirmarEliminacao(context, goal.title),
       onDismissed: (_) => _eliminarObjectivo(ref, goal.id),
       child: card,
     );
   }
 
-  Widget _swipeBg(Alignment alignment) => Container(
-        color: Colors.red,
+  Widget _swipeBg(BuildContext context, Alignment alignment) => Container(
+        color: Theme.of(context).colorScheme.error,
         alignment: alignment,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
+        child: const Icon(Icons.delete_rounded, color: Colors.white),
       );
 }
 
@@ -491,16 +503,19 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(right: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      margin: const EdgeInsets.only(right: PulsoSpace.xs),
+      padding: const EdgeInsets.symmetric(
+          horizontal: PulsoSpace.sm, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(PulsoRadius.sm),
       ),
       child: Text(
         text,
-        style: TextStyle(
-            fontSize: 11, color: color, fontWeight: FontWeight.bold),
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: color, fontWeight: FontWeight.w700),
       ),
     );
   }
