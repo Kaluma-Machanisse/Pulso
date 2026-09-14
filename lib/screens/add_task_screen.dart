@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
@@ -135,26 +136,36 @@ class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
       }
     }
 
-    // Lembretes diários (só faz sentido para hábitos).
-    if (_isHabit) {
-      await HabitService.setReminders(
-        ref,
-        taskId,
-        _reminderTimes.map((t) => (t.hour, t.minute)).toList(),
-      );
-    } else if (tornouSeNormal) {
-      await HabitService.setReminders(ref, taskId, const []);
-    }
-
-    // Actualiza o progresso do(s) objectivo(s) afectado(s) e reagenda os
-    // lembretes das tarefas.
-    await GoalProgressService.recompute(ref, _goalId);
-    if (oldGoalId != null && oldGoalId != _goalId) {
-      await GoalProgressService.recompute(ref, oldGoalId);
-    }
-    await TaskReminderService.rescheduleAll(ref);
-
+    // A tarefa já está guardada — fecha o ecrã já, sem esperar pelos
+    // lembretes/recálculos (podem demorar quando há muitas tarefas
+    // agendadas). Isso corre a seguir, em segundo plano.
     if (mounted) Navigator.of(context).pop();
+
+    unawaited(() async {
+      try {
+        if (_isHabit) {
+          await HabitService.setReminders(
+            ref,
+            taskId,
+            _reminderTimes.map((t) => (t.hour, t.minute)).toList(),
+          );
+        } else if (tornouSeNormal) {
+          await HabitService.setReminders(ref, taskId, const []);
+        }
+
+        // Actualiza o progresso do(s) objectivo(s) afectado(s) e reagenda
+        // os lembretes das tarefas.
+        await GoalProgressService.recompute(ref, _goalId);
+        if (oldGoalId != null && oldGoalId != _goalId) {
+          await GoalProgressService.recompute(ref, oldGoalId);
+        }
+        await TaskReminderService.rescheduleAll(ref);
+      } catch (_) {
+        // Ignorado de propósito — o ecrã já fechou; se isto falhar (p.ex.
+        // por já não haver widget), o próximo arranque da app volta a
+        // sincronizar tudo.
+      }
+    }());
   }
 
   Future<void> _escolherData({required bool inicio}) async {

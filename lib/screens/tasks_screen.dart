@@ -430,8 +430,13 @@ class _TaskCard extends ConsumerWidget {
 
   Future<void> _delete(WidgetRef ref) async {
     await ref.read(deleteTaskProvider(task.id).future);
-    await TaskReminderService.cancelForTask(task.id);
-    await GoalProgressService.recompute(ref, task.goalId);
+    // A remoção da tarefa pode já ter feito este item desaparecer da lista
+    // (e o seu `ref` deixar de ser válido) antes destas chamadas de
+    // manutenção terminarem — não é grave, ignora-se.
+    try {
+      await TaskReminderService.cancelForTask(task.id);
+      await GoalProgressService.recompute(ref, task.goalId);
+    } catch (_) {}
   }
 
   void _toggleSel(WidgetRef ref) =>
@@ -750,8 +755,10 @@ class _HabitCard extends ConsumerWidget {
 
   Future<void> _delete(WidgetRef ref) async {
     await ref.read(deleteTaskProvider(task.id).future);
-    await TaskReminderService.cancelForTask(task.id);
-    await GoalProgressService.recompute(ref, task.goalId);
+    try {
+      await TaskReminderService.cancelForTask(task.id);
+      await GoalProgressService.recompute(ref, task.goalId);
+    } catch (_) {}
   }
 
   @override

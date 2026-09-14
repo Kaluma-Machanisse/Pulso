@@ -110,29 +110,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ListTile(
               leading: Icon(Icons.checklist_rounded, color: scheme.primary),
               title: const Text('Nova tarefa'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(sheetContext);
-                Navigator.of(context).push(
+                await Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const AddTaskScreen()));
+                if (mounted) setState(() => _currentIndex = 0);
               },
             ),
             ListTile(
               leading: Icon(Icons.flag_rounded, color: scheme.primary),
               title: const Text('Novo objectivo'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(sheetContext);
-                Navigator.of(context).push(
+                await Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const AddGoalScreen()));
+                if (mounted) setState(() => _currentIndex = 1);
               },
             ),
             ListTile(
               leading: Icon(Icons.account_balance_wallet_rounded,
                   color: scheme.primary),
               title: const Text('Nova transação'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(sheetContext);
-                Navigator.of(context).push(MaterialPageRoute(
+                await Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const AddTransactionScreen()));
+                if (mounted) setState(() => _currentIndex = 2);
               },
             ),
           ],

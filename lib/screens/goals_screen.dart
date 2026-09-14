@@ -62,7 +62,9 @@ DeadlineStatus deadlineInfo(DateTime? target) {
 
 Future<void> _eliminarObjectivo(WidgetRef ref, int id) async {
   await ref.read(deleteGoalProvider(id).future);
-  await GoalReminderService.cancelForGoal(id);
+  try {
+    await GoalReminderService.cancelForGoal(id);
+  } catch (_) {}
 }
 
 class GoalsScreen extends ConsumerWidget {

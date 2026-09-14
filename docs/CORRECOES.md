@@ -662,3 +662,37 @@ Objectivos · Finanças · Estatísticas · Configurações.
 
 - `dart analyze lib` → **No issues found**.
 - `flutter run -d linux` OK, sem excepções nos logs.
+
+---
+
+# Grelha de hábito, criação rápida e correcção de segurança — Setembro 2026
+
+- **Grelha de check-ins** (`habit_heatmap.dart`) reformulada várias vezes
+  com base em feedback visual: célula fixa e sóbria (16px), preenche a
+  largura do cartão consoante o espaço disponível — dias além do fim real
+  do hábito aparecem só como enchimento visual esbatido, sem alterar a
+  lógica de quando o hábito termina de facto.
+- **Botão central "+" (criação rápida)**: depois de criar tarefa/objectivo/
+  transação, a app volta automaticamente à aba correspondente
+  (Tarefas/Objectivos/Finanças) em vez de ficar na aba onde estavas antes.
+- **Correcção de bug**: o ecrã de criar/editar tarefa ou objectivo por vezes
+  ficava "preso" (não fechava depois de guardar) porque o fecho do ecrã
+  (`Navigator.pop`) esperava por trabalho de manutenção em segundo plano
+  (recalcular progresso, reagendar lembretes) que podia demorar ou nunca
+  resolver. Agora o ecrã fecha logo a seguir a gravar o essencial, e essa
+  manutenção corre à parte, sem bloquear.
+- **Barra de pesquisa** em Tarefas, filtra pelo título.
+- **Segurança**: removido `lib/config/auth_config.dart` (código morto,
+  restos do login silencioso antigo) e as chaves `AUTH_EMAIL`/
+  `AUTH_PASSWORD` do `secrets.json` — estavam a ser embutidas em todos os
+  builds e visíveis na lista de processos do sistema sem servirem
+  propósito nenhum (o login passou a ser feito pelo ecrã real). Comentário
+  desactualizado no `supabase_rls.sql` também corrigido.
+- Encriptação da base de dados local (SQLCipher) foi avaliada e adiada —
+  quebra o fluxo de teste no PC (Linux desktop); fica para quando os testes
+  passarem a ser feitos principalmente no telemóvel.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter run -d linux` OK, sem excepções nos logs.

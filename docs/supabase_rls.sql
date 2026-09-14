@@ -3,10 +3,10 @@
 -- Colar no Supabase → SQL Editor → Run
 -- =============================================================
 --
--- Contexto: app de utilizador único. Existe UMA conta Supabase
--- (a de AuthConfig) com que a app faz login silencioso. Estas
--- políticas dizem: "só pedidos autenticados podem ler/escrever".
--- A anon key sozinha (sem login) deixa de dar acesso aos dados.
+-- Contexto: app de utilizador único, com login real (ecrã de login,
+-- Supabase Auth). Estas políticas dizem: "só pedidos autenticados
+-- podem ler/escrever". A anon key sozinha (sem sessão iniciada)
+-- deixa de dar acesso aos dados.
 --
 -- Quando, no futuro, cada pessoa tiver a sua própria conta:
 --   1. adicionar coluna:  user_id uuid not null default auth.uid()

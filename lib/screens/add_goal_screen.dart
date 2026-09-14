@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' show Value;
@@ -107,15 +108,21 @@ class _AddGoalScreenState extends ConsumerState<AddGoalScreen> {
         await ref.read(updateGoalProvider(updatedGoal).future);
       }
 
-      // Recalcula o progresso a partir das tarefas (se houver), arquiva se
-      // chegou a 100% e reagenda os lembretes.
-      if (autoProgresso) {
-        await GoalProgressService.recompute(ref, widget.goal!.id);
-      }
-      await GoalArchiveService.sweep(ref);
-      await GoalReminderService.rescheduleAll(ref);
-
+      // O objectivo já está guardado — fecha o ecrã já, sem esperar pelo
+      // recálculo de progresso/lembretes (corre a seguir, em segundo plano).
       if (mounted) Navigator.of(context).pop();
+
+      unawaited(() async {
+        try {
+          if (autoProgresso) {
+            await GoalProgressService.recompute(ref, widget.goal!.id);
+          }
+          await GoalArchiveService.sweep(ref);
+          await GoalReminderService.rescheduleAll(ref);
+        } catch (_) {
+          // Ignorado de propósito — ver comentário acima.
+        }
+      }());
     }
   }
 
