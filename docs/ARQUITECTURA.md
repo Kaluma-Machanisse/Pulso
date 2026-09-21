@@ -436,6 +436,38 @@ intervalo `[base, base+99]`.
 
 ---
 
+## 12.1 Termo bancário do dia (`term_of_day_service.dart`)
+
+- **Dados**: `lib/data/banking_terms.dart` — lista estática de 500
+  `BankingTerm` (termo, definição, categoria), sem tabela na BD (conteúdo
+  educativo fixo, não editável pelo utilizador).
+- **Escolha do termo**: `TermOfDayService.today()` é determinística — usa
+  `int.parse('AAAAMMDD') % bankingTerms.length`. Garante que nunca se
+  repete em dias consecutivos (a diferença entre dois dias seguidos nunca
+  é múltiplo do tamanho da lista) e que cada termo só reaparece ao fim de
+  vários meses.
+- **Notificação diária**: `NotificationService.scheduleDailyAt` usa
+  `matchDateTimeComponents: DateTimeComponents.time` — agenda-se **uma
+  vez** (no arranque, via `TermOfDayService.scheduleDaily()` no
+  `home_screen.dart`) e o sistema operativo repete-a sozinho todos os dias
+  à mesma hora (9h), sem a app precisar de abrir entretanto. O
+  título/corpo da notificação são genéricos de propósito — o termo real só
+  é calculado (`TermOfDayService.today()`) quando o utilizador toca nela,
+  para nunca mostrar um termo desactualizado de uma notificação antiga por
+  entregar.
+- **Toque na notificação → navegação**: `main.dart` define um
+  `navigatorKey` global (`GlobalKey<NavigatorState>`) passado ao
+  `MaterialApp`. `NotificationService.onTap` (definido no arranque) e
+  `checkLaunchTap()` (chamado uma vez, cobre o caso de a app estar
+  completamente fechada) permitem abrir `BankingTermDetailScreen` a partir
+  de qualquer estado da app. Este é o único ponto do código que navega
+  fora do `BuildContext` de um widget.
+- **Ecrãs**: `banking_terms_screen.dart` — lista com pesquisa e
+  agrupamento por categoria (16 categorias, cada uma com cor/ícone
+  próprios), acessível a partir do ícone de livro na Carteira.
+
+---
+
 ## 13. Convenções
 
 - Idioma: **português europeu** em UI, comentários e nomes de domínio (`objectivo`, `receita`).

@@ -12,6 +12,7 @@ import '../services/goal_term_service.dart';
 import '../services/task_reminder_service.dart';
 import '../services/habit_service.dart';
 import '../services/report_service.dart';
+import '../services/term_of_day_service.dart';
 import '../providers/database_provider.dart';
 import 'goals_screen.dart';
 import 'tasks_screen.dart';
@@ -65,6 +66,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await TaskReminderService.rescheduleAll(ref);
       // Gera os relatórios mensais em falta (do mês anterior para trás).
       await ReportService.ensureMonthlyReports(ref);
+      // Lembrete diário do "termo bancário do dia" — agenda uma vez, o
+      // sistema repete sozinho todos os dias às 9h.
+      await TermOfDayService.scheduleDaily();
       // Retenção: pergunta antes de apagar relatórios com mais de 1 ano.
       await _perguntarRetencao();
     });

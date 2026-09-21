@@ -696,3 +696,62 @@ Objectivos · Finanças · Estatísticas · Configurações.
 
 - `dart analyze lib` → **No issues found**.
 - `flutter run -d linux` OK, sem excepções nos logs.
+
+---
+
+# Correções nativas e "termo bancário do dia" — Setembro 2026
+
+- **Permissão de Internet em falta**: o `AndroidManifest.xml` não tinha
+  `android.permission.INTERNET`, o que bloqueava silenciosamente todo o
+  acesso à rede no telemóvel real (funcionava no preview do PC, que não
+  precisa da permissão) — aparecia como erro de DNS ("Failed host lookup")
+  ao tentar fazer login. Adicionadas `INTERNET` e `ACCESS_NETWORK_STATE`.
+- **Ícone de arranque "gordo"**: o splash automático do Android 12+ usava o
+  ícone da app por omissão, sem configuração explícita, ficando
+  desproporcionado. `flutter_native_splash` passou a receber
+  `image`/`icon_background_color` explícitos (usa `icon_foreground.png`,
+  já com boa margem), regenerado com `dart run flutter_native_splash:create`.
+- **Grelha de hábitos — versão final**: depois de várias iterações (células
+  a crescerem demasiado, semanas cortadas), ficou com célula fixa e sóbria
+  (16px) que se ajusta ao número de semanas que cabem na largura do
+  cartão; dias além do fim real do hábito só aparecem como enchimento
+  visual esbatido, sem alterar a lógica de fecho do hábito. A grelha deixou
+  de estar sempre visível — toca-se em qualquer parte da faixa de
+  estatísticas (Feitos/Completo/Sequência) para mostrar ou esconder.
+
+## Nova funcionalidade: Termo bancário do dia
+
+- **Dados** (`lib/data/banking_terms.dart`): 500 termos bancários e
+  financeiros, organizados em 16 categorias (Fundamentos, Contas e
+  cartões, Crédito, Dinheiro móvel, Poupança, Seguros, Câmbio, Regulação,
+  Banca digital, Finanças pessoais, Pagamentos, Impostos, Empresas,
+  Imobiliário, Macroeconomia, Mercados financeiros), cobrindo tanto
+  conceitos gerais como específicos do contexto moçambicano
+  (M-Pesa/e-Mola/mKesh, NUIT, Banco de Moçambique).
+- **Termo do dia** (`TermOfDayService`): escolhido de forma determinística
+  pela data (ano+mês+dia), garantindo que nunca se repete em dois dias
+  seguidos e que cada termo só volta a aparecer ao fim de vários meses.
+- **Notificação diária**: agendada uma única vez (`scheduleDaily`, chamada
+  no arranque da app) para as 9h, repete-se sozinha todos os dias via
+  `matchDateTimeComponents: DateTimeComponents.time` — não precisa de a
+  app abrir todos os dias. O título da notificação é genérico de propósito
+  (o termo real só é calculado quando o ecrã abre), para nunca ficar
+  desactualizado.
+- **Toque na notificação**: novo `navigatorKey` global em `main.dart` +
+  `NotificationService.onTap`/`checkLaunchTap()` permitem abrir o ecrã de
+  detalhe do termo a partir de um toque, com a app aberta, em segundo
+  plano, ou completamente fechada.
+- **Ecrãs** (`lib/screens/banking_terms_screen.dart`): lista com pesquisa e
+  agrupamento por categoria (termo de hoje sempre em destaque no topo), e
+  ecrã de detalhe com cabeçalho visual (ícone circular colorido por
+  categoria + título em Familjen Grotesk).
+- **Acesso manual**: ícone de livro na Carteira.
+
+## Verificação
+
+- `dart analyze lib` → **No issues found**.
+- `flutter run -d linux` OK, sem excepções nos logs (as exceções do Linux
+  desktop não suportar `zonedSchedule`/`getNotificationAppLaunchDetails`
+  são apanhadas e ignoradas de propósito, como já acontecia antes).
+- Testado no telemóvel Android real (login, permissão de Internet,
+  instalação via `adb install -r`).

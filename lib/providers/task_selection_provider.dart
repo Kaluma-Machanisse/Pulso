@@ -19,3 +19,8 @@ class TaskSelection extends StateNotifier<Set<int>> {
   void selectAll(Iterable<int> ids) => state = {...ids};
   void clear() => state = const {};
 }
+
+/// Se o histórico (grelha de check-ins) de um hábito está expandido —
+/// escondido por omissão para não sobrecarregar visualmente a lista.
+final habitHistoryExpandedProvider =
+    StateProvider.family<bool, int>((ref, taskId) => false);

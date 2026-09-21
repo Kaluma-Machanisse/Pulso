@@ -866,46 +866,73 @@ class _HabitCard extends ConsumerWidget {
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: PulsoPalette.of(context).surfaceElevated,
-                          borderRadius: BorderRadius.circular(PulsoRadius.sm),
-                        ),
-                        child: IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                  child: _HabitMiniStat(
-                                      valor: '$feitos', label: 'Feitos')),
-                              _divisor(context),
-                              Expanded(
-                                  child: _HabitMiniStat(
-                                      valor: '$pct%',
-                                      label: 'Completo',
-                                      destaque: pct >= 100
-                                          ? SemanticColors.receita
-                                          : cor)),
-                              _divisor(context),
-                              Expanded(
-                                  child: _StreakRing(streak: streak)),
+                      Builder(builder: (context) {
+                        final temHeatmap = task.habitStartDate != null &&
+                            task.habitEndDate != null;
+                        final expandido = temHeatmap &&
+                            ref.watch(habitHistoryExpandedProvider(task.id));
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            InkWell(
+                              borderRadius:
+                                  BorderRadius.circular(PulsoRadius.sm),
+                              onTap: !temHeatmap
+                                  ? null
+                                  : () => ref
+                                      .read(habitHistoryExpandedProvider(
+                                              task.id)
+                                          .notifier)
+                                      .state = !expandido,
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: PulsoPalette.of(context)
+                                      .surfaceElevated,
+                                  borderRadius:
+                                      BorderRadius.circular(PulsoRadius.sm),
+                                ),
+                                child: IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                          child: _HabitMiniStat(
+                                              valor: '$feitos',
+                                              label: 'Feitos')),
+                                      _divisor(context),
+                                      Expanded(
+                                          child: _HabitMiniStat(
+                                              valor: '$pct%',
+                                              label: 'Completo',
+                                              destaque: pct >= 100
+                                                  ? SemanticColors.receita
+                                                  : cor)),
+                                      _divisor(context),
+                                      Expanded(
+                                          child:
+                                              _StreakRing(streak: streak)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (expandido) ...[
+                              const SizedBox(height: 10),
+                              HabitHeatmap(
+                                start: task.habitStartDate!,
+                                end: task.habitEndDate!,
+                                checkins: checkins
+                                    .map((c) => DateTime(
+                                        c.date.year, c.date.month, c.date.day))
+                                    .toSet(),
+                              ),
                             ],
-                          ),
-                        ),
-                      ),
-                      if (task.habitStartDate != null &&
-                          task.habitEndDate != null) ...[
-                        const SizedBox(height: 14),
-                        HabitHeatmap(
-                          start: task.habitStartDate!,
-                          end: task.habitEndDate!,
-                          checkins: checkins
-                              .map((c) => DateTime(
-                                  c.date.year, c.date.month, c.date.day))
-                              .toSet(),
-                        ),
-                      ],
+                          ],
+                        );
+                      }),
                       if (!task.habitClosed && !selecting) ...[
                         const SizedBox(height: 12),
                         SizedBox(

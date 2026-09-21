@@ -13,6 +13,7 @@ import '../theme/pulso_theme.dart';
 import '../widgets/confirm_dialog.dart';
 import 'add_transaction_screen.dart';
 import 'budgets_screen.dart';
+import 'banking_terms_screen.dart';
 
 /// Barra de progresso que anima do zero até ao valor actual sempre que este
 /// muda — dá vida a algo que, estático, parecia só uma barra genérica.
@@ -146,6 +147,12 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             tooltip: 'Orçamentos',
             icon: const Icon(Icons.pie_chart_outline_rounded),
             onPressed: _abrirOrcamentos,
+          ),
+          IconButton(
+            tooltip: 'Termos bancários',
+            icon: const Icon(Icons.menu_book_rounded),
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BankingTermsScreen())),
           ),
         ],
       ),
